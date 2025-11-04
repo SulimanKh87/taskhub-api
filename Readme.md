@@ -12,31 +12,31 @@ Authentication	JWT (OAuth2PasswordBearer)
 Data Validation	Pydantic v2
 Testing	Pytest + HTTPX
 
-⚙️ Project Structure
-taskhub-api/
-│
-├── app/
-│   ├── main.py               # FastAPI app + middleware
-│   ├── config.py             # Env & settings loader
-│   ├── database.py           # MongoDB connection (Motor)
-│   ├── celery_app.py         # Celery instance
-│   ├── tasks.py              # Background task definitions
-│   ├── security.py           # Password hashing & JWT helpers
-│   ├── routes/
-│   │   ├── auth.py           # Register & Login endpoints
-│   │   └── tasks.py          # Task CRUD endpoints
-│   ├── schemas/
-│   │   ├── user_schema.py    # Pydantic models for users
-│   │   ├── task_schema.py    # Pydantic models for tasks
-│   │   └── token_schema.py   # JWT token schema
-│   └── tests/
-│       └── test_api.py       # Health check & integration tests
-│
-├── Dockerfile
-├── docker-compose.yml
-├── requirements.txt
-├── .env                      # Environment variables
-└── README.md
+⚙ Project Structure
+```mermaid
+graph TD
+    A[taskhub-api/] --> B[app/]
+    B --> B1[main.py]
+    B --> B2[config.py]
+    B --> B3[database.py]
+    B --> B4[celery_app.py]
+    B --> B5[security.py]
+    B --> B6[tasks.py]
+    B --> B7[routes/]
+    B7 --> B71[auth.py]
+    B7 --> B72[tasks.py]
+    B --> B8[schemas/]
+    B8 --> B81[user_schema.py]
+    B8 --> B82[task_schema.py]
+    B8 --> B83[token_schema.py]
+    B --> B9[tests/]
+    B9 --> B91[test_api.py]
+    A --> C[Dockerfile]
+    A --> D[docker-compose.yml]
+    A --> E[requirements.txt]
+    A --> F[.env]
+    A --> G[README.md]
+```
 
 🚀 Quick Start
 1. Clone & Build
