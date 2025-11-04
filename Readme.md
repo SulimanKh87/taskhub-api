@@ -14,6 +14,7 @@ JWT (python-jose)
 bcrypt
 
 🧭 System Architecture
+``` mermaid
 graph TD
 
     %% CLIENT LAYER
@@ -54,23 +55,15 @@ graph TD
     B --> D
     D --> E
     E --> D
-
+```
 ⚙️ Workflow Summary
-
 Client → FastAPI
-
 The user (or Swagger UI) sends authenticated HTTP requests.
-
 FastAPI → MongoDB
-
 Handles persistent storage for users and task documents.
-
 FastAPI → Redis → Celery
-
 Background or delayed tasks are queued via Redis, executed by Celery workers.
-
 Celery Worker → Redis
-
 Stores task results and execution states in Redis for retrieval.
 
 🧱 Service Overview
