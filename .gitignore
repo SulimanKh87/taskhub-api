@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+
+# Environment
+.env
+.env.*
+!env.example
+*.env.local
+
+# Logs
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+*$py.class
+
+# Pytest cache
+.cache/
+.pytest_cache/
+
+# Docker
+*.pid
+docker-compose.override.yml
+
+# Virtual environments
+venv/
+env/
