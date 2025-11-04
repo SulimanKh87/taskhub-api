@@ -3,44 +3,65 @@ A modern, containerized backend for task management with user authentication,
 async background jobs, and MongoDB persistence — built using FastAPI, Motor, Celery, and Redis.
 
 🧱 Tech Stack
-Layer	Technology
-Backend Framework	FastAPI (Python 3.12)
-Database	MongoDB (Async via Motor)
-Background Tasks	Celery + Redis
-Containerization	Docker + Docker Compose
-Authentication	JWT (OAuth2PasswordBearer)
-Data Validation	Pydantic v2
-Testing	Pytest + HTTPX
+Python 3.12
+FastAPI
+MongoDB (Motor)
+Redis / Celery
+Docker & Docker Compose
+Pydantic v2
+Pytest / HTTPX
+JWT (python-jose)
+bcrypt
 
-⚙ Project Structure
-taskhub-api/
-│
-├── app/
-│ ├── main.py # FastAPI app entrypoint
-│ ├── config.py # Environment & settings
-│ ├── database.py # MongoDB connection (Motor)
-│ ├── celery_app.py # Celery configuration
-│ ├── tasks.py # Background tasks
-│ ├── security.py # JWT & password hashing
-│ │
-│ ├── routes/
-│ │ ├── auth.py # Authentication routes
-│ │ └── tasks.py # CRUD task endpoints
-│ │
-│ ├── schemas/
-│ │ ├── user_schema.py # Pydantic user models
-│ │ ├── task_schema.py # Pydantic task models
-│ │ └── token_schema.py # Token model
-│ │
-│ └── tests/
-│ └── test_api.py # Health & integration tests
-│
-├── .env # Environment variables (local only)
-├── .gitignore # Ignore venv, cache, and .env
-├── Dockerfile # FastAPI Docker image
-├── docker-compose.yml # Compose: API + MongoDB + Redis + Celery
-├── requirements.txt # Python dependencies
-└── README.md # Documentation
+taskhub-api/                                                         
+│  
+├── app/                                    📁 application source  
+│   ├── main.py               🚀 app entrypoint (FastAPI initialization & middleware)  
+│   ├── config.py             ⚙️ environment configuration (loads .env)  
+│   ├── database.py           🗃️ MongoDB async client (Motor)  
+│   ├── celery_app.py         🐇 Celery configuration (broker & backend)  
+│   ├── tasks.py              🔄 background task definitions  
+│   ├── security.py           🔐 JWT creation & bcrypt password hashing  
+│   │  
+│   ├── routes/               🌐 API route modules  
+│   │   ├── auth.py           👤 login & registration endpoints  
+│   │   └── tasks.py          ✅ CRUD endpoints for task operations  
+│   │  
+│   ├── schemas/              🧩 Pydantic data models  
+│   │   ├── user_schema.py    👥 user data validation  
+│   │   ├── task_schema.py    📋 task model definition  
+│   │   └── token_schema.py   🔑 JWT token schema  
+│   │  
+│   └── tests/                🧪 automated tests  
+│       └── test_api.py       🩺 health check & endpoint tests  
+│ 
+├── .env                      🗝️ environment secrets (excluded from git)  
+├── .gitignore                🚫 ignored files & folders  
+├── Dockerfile                🐳 build instructions for FastAPI container  
+├── docker-compose.yml        ⚙️ service orchestration (API, Mongo, Redis, Celery)  
+├── requirements.txt          📦 Python dependencies list  
+└── README.md                 📖 project documentation  
+
+
+---
+
+## ⚙️ Environment Configuration
+Example `.env` file:
+```bash
+# App
+SECRET_KEY=replace_me_with_secure_hex_key
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+# MongoDB
+MONGO_USER=taskhub_user
+MONGO_PASSWORD=StrongPassword123
+MONGODB_URI=mongodb://taskhub_user:StrongPassword123@taskhub-mongo:27017/taskhub_db?authSource=admin
+
+# Redis / Celery
+REDIS_URL=redis://redis:6379/0
+CELERY_BROKER_URL=redis://redis:6379/0
+CELERY_RESULT_BACKEND=redis://redis:6379/0
+```
 
 🚀 Quick Start
 1. Clone & Build
@@ -67,10 +88,70 @@ Open your browser:
 Interactive Swagger UI for all endpoints.
 
 4. Example Workflow
-Register → /auth/register
-Login → /auth/login (returns JWT)
-Use Token → /tasks/ endpoints
-Background Task → Created via Celery in Redis
+🧪 Example API Usage
+# Register a new user
+POST /auth/register
+{
+  "username": "sami",
+  "email": "sami@example.com",
+  "password": "MySecurePassword123"
+}
+
+
+✅ Response:
+{
+  "id": "66f91a3d8c0b5aef0d123abc",
+  "username": "sami",
+  "email": "sami@example.com"
+}
+
+# Login
+POST /auth/login
+(Form data → not JSON)
+
+# Field	Example
+username	username@example.com
+password	MySecurePassword123
+
+✅ Response:
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+
+# Create a new task
+POST /tasks/
+Authorization: Bearer <access_token>
+{
+  "title": "Prepare deployment report",
+  "description": "Write Docker + CI/CD summary"
+}
+
+
+✅ Response:
+{
+  "id": "66f91b1f0f0a5bde01abcd99",
+  "title": "Prepare deployment report",
+  "status": "pending",
+  "owner_id": "66f91a3d8c0b5aef0d123abc"
+}
+
+# Health check
+GET /health
+curl http://localhost:8000/health
+
+
+✅ Response:
+{"status": "ok", "app": "taskhub-api"}
+
+🧪 Testing (inside container)
+Run tests with:
+docker compose exec api pytest -v
+
+
+✅ Expected output:
+app/tests/test_api.py::test_health_check PASSED
+
 
 🧠 Testing Notes
 Includes test_health_check for CI
@@ -90,3 +171,4 @@ kubectl apply -f k8s/
 
 📄 License
 MIT License © 2025 Suleiman Khasheboun suli.tempmail2022@gmail.com
+Backend Developer | FastAPI · Docker · MongoDB · Celery
