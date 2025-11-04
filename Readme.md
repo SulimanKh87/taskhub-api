@@ -1,6 +1,27 @@
 🚀 TaskHub API — FastAPI + MongoDB + Celery
+
+## 📚 Overview
 A modern, containerized backend for task management with user authentication,
 async background jobs, and MongoDB persistence — built using FastAPI, Motor, Celery, and Redis.
+
+# TaskHub API
+is an async backend service for managing users and tasks.  
+It demonstrates:
+- Secure login & token-based authentication
+- Background task scheduling with Celery
+- Clean separation of routes, schemas, and database logic
+- Fully containerized setup using Docker Compose\
+- Automated testing with Pytest
+- Pydantic v2 data validation
+- Modern Python 3.12 features
+- Comprehensive API documentation with Swagger UI
+- Environment configuration via .env files
+- Redis as a message broker and result backend for Celery
+- Modular project structure for maintainability
+- Async I/O using FastAPI and Motor for MongoDB
+- JWT tokens with python-jose
+- Password hashing with bcrypt
+- Health check endpoint for monitoring
 
 🧱 Tech Stack
 Python 3.12
@@ -129,10 +150,9 @@ git clone https://github.com/sulimankh87/taskhub-api.git
 cd taskhub-api
 docker compose up -d --build
 
-
 ✅ This launches:
-FastAPI → http://localhost:8000
-MongoDB → mongodb://localhost:27017
+FastAPI – Swagger UI → http://localhost:8000
+MongoDB - quick API health check → mongodb://localhost:27017
 Redis (Celery broker)
 Celery worker
 
@@ -181,12 +201,11 @@ password	MySecurePassword123
 
 # Create a new task
 POST /tasks/
-Authorization: Bearer <access_token>
+Use your Authorization: Bearer <access_token> header.
 {
   "title": "Prepare deployment report",
   "description": "Write Docker + CI/CD summary"
 }
-
 
 ✅ Response:
 {
@@ -200,6 +219,12 @@ Authorization: Bearer <access_token>
 GET /health
 curl http://localhost:8000/health
 
+🧾 List Tasks
+GET /tasks/
+
+💀 Delete Task
+DELETE /tasks/{task_id}
+
 
 ✅ Response:
 {"status": "ok", "app": "taskhub-api"}
@@ -208,10 +233,8 @@ curl http://localhost:8000/health
 Run tests with:
 docker compose exec api pytest -v
 
-
 ✅ Expected output:
 app/tests/test_api.py::test_health_check PASSED
-
 
 🧠 Testing Notes
 Includes test_health_check for CI
@@ -228,6 +251,20 @@ docker compose -f docker-compose.yml up -d --build
 
 Or on Kubernetes (future step):
 kubectl apply -f k8s/
+
+🧠 Developer Quick Commands
+Command	Description
+docker compose logs -f api	Stream FastAPI logs
+docker compose logs -f celery-worker	Watch Celery tasks
+docker compose down	Stop all services
+docker compose up -d	Restart in background
+docker compose exec api pytest -v	Run tests
+
+🌐 API Documentation
+After running the containers:
+Swagger UI → http://localhost:8000/docs
+ReDoc → http://localhost:8000/redoc
+
 
 📄 License
 MIT License © 2025 Suleiman Khasheboun suli.tempmail2022@gmail.com
