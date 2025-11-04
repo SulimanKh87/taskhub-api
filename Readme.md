@@ -13,31 +13,32 @@ Data Validation	Pydantic v2
 Testing	Pytest + HTTPX
 
 ⚙ Project Structure
-📦 taskhub-api
-├── 📁 app
-│ ├── main.py # FastAPI app instance and middleware
-│ ├── config.py # Environment variable configuration
-│ ├── database.py # MongoDB async client (Motor)
-│ ├── celery_app.py # Celery initialization
-│ ├── tasks.py # Background task definitions
-│ ├── security.py # Password hashing and JWT helpers
-│ │
-│ ├── 📁 routes
-│ │ ├── auth.py # Login and signup routes
-│ │ └── tasks.py # CRUD endpoints for tasks
-│ │
-│ ├── 📁 schemas
-│ │ ├── user_schema.py # User data models
-│ │ ├── task_schema.py # Task data models
-│ │ └── token_schema.py # JWT token model
-│ │
-│ └── 📁 tests
-│ └── test_api.py # Pytest health check and integration tests
+taskhub-api/
 │
-├── .env # Environment variables (not committed)
-├── .gitignore # Ignore venv, cache, and env files
-├── Dockerfile # FastAPI build instructions
-├── docker-compose.yml # Defines API, MongoDB, Redis, Celery services
+├── app/
+│ ├── main.py # FastAPI app entrypoint
+│ ├── config.py # Environment & settings
+│ ├── database.py # MongoDB connection (Motor)
+│ ├── celery_app.py # Celery configuration
+│ ├── tasks.py # Background tasks
+│ ├── security.py # JWT & password hashing
+│ │
+│ ├── routes/
+│ │ ├── auth.py # Authentication routes
+│ │ └── tasks.py # CRUD task endpoints
+│ │
+│ ├── schemas/
+│ │ ├── user_schema.py # Pydantic user models
+│ │ ├── task_schema.py # Pydantic task models
+│ │ └── token_schema.py # Token model
+│ │
+│ └── tests/
+│ └── test_api.py # Health & integration tests
+│
+├── .env # Environment variables (local only)
+├── .gitignore # Ignore venv, cache, and .env
+├── Dockerfile # FastAPI Docker image
+├── docker-compose.yml # Compose: API + MongoDB + Redis + Celery
 ├── requirements.txt # Python dependencies
 └── README.md # Documentation
 
