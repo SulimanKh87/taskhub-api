@@ -1,88 +1,67 @@
-# docker-compose.yml
-# No 'version' key (Compose v2+ warns it's obsolete)
-
 services:
+  api:
+    build: .
+    image: sulimankh87/taskhub-api:1.0.0
+    container_name: taskhub-api
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+    env_file:
+      - .env
+    ports:
+      - "8000:8080"
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/code
+    networks:
+      - taskhub-network
+    restart: on-failure
+
+  celery-worker:
+    build: .
+    image: sulimankh87/taskhub-celery:1.0.0
+    container_name: celery-worker
+    command: celery -A app.celery_app.celery_app worker --loglevel=info
+    env_file:
+      - .env
+    volumes:
+      - .:/code
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - taskhub-network
+    restart: on-failure
+
   mongo:
     image: mongo:7
     container_name: taskhub-mongo
-    restart: unless-stopped
-    command: ["--bind_ip_all"]
-    environment:
-      # These are only for initializing Mongo's root user inside the container.
-      # Keep them in sync with your actual root user/password.
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-root}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-change_me}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - mongo_data:/data/db
     networks:
       - taskhub-network
-    healthcheck:
-      test: ["CMD-SHELL", "mongosh --quiet --eval 'db.runCommand({ ping: 1 }).ok' || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
     container_name: redis
-    restart: unless-stopped
-    networks:
-      - taskhub-network
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 15
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: taskhub-api
-    restart: unless-stopped
-    environment:
-      - PYTHONPATH=/code
-    env_file:
-      - .env
-    # If 8080 on the HOST shows that nginx hello page, keep this mapping:
-    ports:
-      - "8000:8080"   # host:container
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - taskhub-network
-    security_opt:
-      - no-new-privileges:true
-    # If your Dockerfile doesn't set CMD, uncomment the following:
-    # command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080"]
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/health || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 10
-
-  celery-worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: celery-worker
-    restart: unless-stopped
-    env_file:
-      - .env
-    depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      api:
-        condition: service_started
+      retries: 5
     networks:
       - taskhub-network
-    # Adjust the module/path to your Celery app if different:
-    command: ["celery", "-A", "app.worker:celery_app", "worker", "--loglevel=info"]
+    restart: unless-stopped
 
 volumes:
   mongo_data:
