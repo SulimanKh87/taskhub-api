@@ -13,6 +13,73 @@ Pytest / HTTPX
 JWT (python-jose)
 bcrypt
 
+🧭 System Architecture
+graph TD
+
+    %% CLIENT LAYER
+    A[🧑‍💻 Client / Swagger UI / Frontend] -->|HTTP / JSON| B[🚀 FastAPI API Service]
+
+    %% API LAYER
+    subgraph B[FastAPI Application Layer]
+        B1[🔐 JWT Authentication<br/>bcrypt password hashing]
+        B2[📋 Task CRUD Endpoints<br/>Async I/O via Uvicorn]
+        B3[🧩 Pydantic Validation<br/>and Config Management]
+    end
+
+    %% CONNECTIONS
+    B -->|Async Motor Client| C[(🗄️ MongoDB)]
+    B -->|Publishes Tasks| D[(🧩 Redis Broker)]
+    D --> E[⚙️ Celery Worker]
+    E -->|Stores Results| D
+
+    %% DATABASES
+    subgraph C_DB[MongoDB Storage]
+        C1[(👤 Users Collection)]
+        C2[(✅ Tasks Collection)]
+    end
+    C --> C1
+    C --> C2
+
+    %% REDIS / CELERY
+    subgraph D_REDIS[Redis & Celery System]
+        D1[(📨 Task Queue)]
+        D2[(📦 Result Backend)]
+    end
+    D --> D1
+    D --> D2
+
+    %% FLOW DIRECTION
+    A --> B
+    B --> C
+    B --> D
+    D --> E
+    E --> D
+
+⚙️ Workflow Summary
+
+Client → FastAPI
+
+The user (or Swagger UI) sends authenticated HTTP requests.
+
+FastAPI → MongoDB
+
+Handles persistent storage for users and task documents.
+
+FastAPI → Redis → Celery
+
+Background or delayed tasks are queued via Redis, executed by Celery workers.
+
+Celery Worker → Redis
+
+Stores task results and execution states in Redis for retrieval.
+
+🧱 Service Overview
+Service	Description	Docker Container
+FastAPI	REST API handling authentication and tasks	taskhub-api
+MongoDB	Stores users and tasks (NoSQL)	taskhub-mongo
+Redis	Message broker & Celery result backend	redis
+Celery Worker	Executes background jobs asynchronously	celery-worker
+
 taskhub-api/                                                         
 │  
 ├── app/                                    📁 application source  
