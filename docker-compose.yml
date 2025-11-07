@@ -1,71 +1,82 @@
+# docker-compose.yml
+# Orchestrates multiple containers: FastAPI API, MongoDB, Redis, Celery
+
 services:
+  # ==========================
+  # FastAPI Application Service
+  # ==========================
   api:
-    build: .
-    image: sulimankh87/taskhub-api:1.0.0
-    container_name: taskhub-api
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
-    env_file:
-      - .env
+    build: .                                   # Build from current directory (uses Dockerfile)
+    container_name: taskhub-api                # Optional name for easy identification
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     ports:
-      - "8000:8080"
+      - "8000:8000"                            # Map container port 8000 → host port 8000
+    env_file:
+      - .env                                   # Load environment variables for config.py
     depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - mongo                                  # Wait for MongoDB to start
+      - redis                                  # Wait for Redis broker
+    restart: always                            # Automatically restart on crash
+    networks:
+      - taskhub-network                        # Internal Docker network
+
+  # ==========================
+  # MongoDB Database Service
+  # ==========================
+  mongo:
+    image: mongo:7                             # Use official MongoDB version 7
+    container_name: taskhub-mongo
+    restart: always
+    ports:
+      - "27017:27017"                          # Optional: expose for local debugging
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD}
     volumes:
-      - .:/code
+      - mongo_data:/data/db                    # Persist Mongo data
     networks:
       - taskhub-network
-    restart: on-failure
 
+  # ==========================
+  # Redis Message Broker Service
+  # ==========================
+  redis:
+    image: redis:7-alpine                      # Lightweight Redis image
+    container_name: redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]       # Health check to ensure Redis is ready
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - taskhub-network
+
+  # ==========================
+  # Celery Worker Service
+  # ==========================
   celery-worker:
-    build: .
-    image: sulimankh87/taskhub-celery:1.0.0
-    container_name: celery-worker
+    build: .                                   # Use same Dockerfile as the API
+    container_name: taskhub-celery-worker
     command: celery -A app.celery_app.celery_app worker --loglevel=info
     env_file:
       - .env
-    volumes:
-      - .:/code
     depends_on:
-      mongo:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - redis
+      - mongo
+    restart: always
     networks:
       - taskhub-network
-    restart: on-failure
 
-  mongo:
-    image: mongo:7
-    container_name: taskhub-mongo
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    volumes:
-      - mongo_data:/data/db
-    networks:
-      - taskhub-network
-    restart: unless-stopped
-
-  redis:
-    image: redis:7-alpine
-    container_name: redis
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - taskhub-network
-    restart: unless-stopped
-
-volumes:
-  mongo_data:
-
+# ==========================
+# Shared Docker Network
+# ==========================
 networks:
   taskhub-network:
     driver: bridge
+
+# ==========================
+# Persistent Volumes
+# ==========================
+volumes:
+  mongo_data:

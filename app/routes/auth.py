@@ -1,17 +1,21 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
-from datetime import datetime, timedelta
-from jose import jwt
-from passlib.context import CryptContext
-from pymongo import ReturnDocument
-from app.config import settings
-from app.database import db
-from app.schemas import UserCreate, UserLogin, UserPublic, Token
-import uuid
-import asyncio
+# Handles user authentication (register + login) using JWT and bcrypt
 
+from fastapi import APIRouter, Depends, HTTPException, status          # FastAPI utilities for routing, dependency injection, and HTTP errors
+from fastapi.security import OAuth2PasswordRequestForm                 # Handles form-based login requests (username/password)
+from datetime import datetime, timedelta                               # Used to manage token expiration times
+from jose import jwt                                                   # Library to encode/decode JWT tokens
+from passlib.context import CryptContext                               # Provides password hashing and verification with bcrypt
+from pymongo import ReturnDocument                                     # (Optional import) for MongoDB document updates — not used here
+from app.config import settings                                        # Import global configuration (.env-loaded)
+from app.database import db                                            # MongoDB async client (Motor)
+from app.schemas import UserCreate, UserLogin, UserPublic, Token       # Pydantic schemas for validation
+import uuid                                                            # Used to generate unique user IDs
+import asyncio                                                         # Used for async operations (not used here directly)
+
+# Create a router instance for all /auth routes
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
+# Create a password hashing context — bcrypt is the algorithm
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
@@ -21,19 +25,22 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
     """Securely hash a password."""
+    # Takes a plain password and returns a bcrypt hash
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Compare plain password with hash."""
+    # Verifies that the plain text password matches the stored hash
     return pwd_context.verify(plain_password, hashed_password)
 
 
 def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_minutes):
     """Generate JWT token."""
+    # Creates a JSON Web Token (JWT) with an expiration time
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
-    to_encode.update({"exp": expire})
+    expire = datetime.utcnow() + timedelta(minutes=expires_delta)       # Expiration timestamp
+    to_encode.update({"exp": expire})                                   # Add expiry claim to payload
     encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
     return encoded_jwt
 
@@ -44,19 +51,26 @@ def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_min
 
 @router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
 async def register_user(user: UserCreate):
+    # Check if the username already exists in MongoDB
     existing = await db.users.find_one({"username": user.username})
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
+    # Hash the password before saving it
     hashed_pw = hash_password(user.password)
+
+    # Create the user document
     new_user = {
-        "_id": str(uuid.uuid4()),
+        "_id": str(uuid.uuid4()),                # Generate unique ID
         "username": user.username,
         "hashed_password": hashed_pw,
-        "created_at": datetime.utcnow(),
+        "created_at": datetime.utcnow(),         # Record creation timestamp
     }
 
+    # Insert user into MongoDB
     await db.users.insert_one(new_user)
+
+    # Return public user info (excluding password)
     return UserPublic(id=new_user["_id"], username=user.username, created_at=new_user["created_at"])
 
 
@@ -66,11 +80,21 @@ async def register_user(user: UserCreate):
 
 @router.post("/login", response_model=Token)
 async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
+    # OAuth2PasswordRequestForm extracts username/password from form-data body
     user = await db.users.find_one({"username": form_data.username})
+
+    # Check if user exists and password is valid
     if not user or not verify_password(form_data.password, user["hashed_password"]):
         raise HTTPException(status_code=401, detail="Invalid username or password")
 
+    # Generate access token (short-lived)
     access_token = create_access_token(data={"sub": user["username"]})
-    refresh_token = create_access_token(data={"sub": user["username"]}, expires_delta=settings.jwt_refresh_days * 1440)
 
+    # Generate refresh token (longer expiration)
+    refresh_token = create_access_token(
+        data={"sub": user["username"]},
+        expires_delta=settings.jwt_refresh_days * 1440  # convert days → minutes
+    )
+
+    # Return both tokens to the client
     return Token(access_token=access_token, refresh_token=refresh_token)
