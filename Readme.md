@@ -1,4 +1,8 @@
 🚀 TaskHub API — FastAPI + MongoDB + Celery
+```markdown
+> **Version:** 1.1.0 — Database Connection Lifecycle Enhancement  
+> *Release Date:* Nov 2025
+```
 
 ## 📚 Overview
 A modern, containerized backend for task management with user authentication,
@@ -241,6 +245,20 @@ Includes test_health_check for CI
 Use pytest --disable-warnings -v for cleaner output
 Add new tests under app/tests/
 
+```markdown
+### 🧪 Testing Notes (Updated)
+- Tests now manually initialize and close MongoDB connections  
+  to avoid `NoneType db` errors during isolated test runs.
+- Example:
+  ```python
+  from app.database import connect_to_mongo, close_mongo_connection
+  @pytest.fixture(scope="session", autouse=True)
+  async def init_db():
+      await connect_to_mongo()
+      yield
+      await close_mongo_connection()
+```
+
 🛡️ Security
 JWT authentication with bcrypt password hashing
 TrustedHostMiddleware to block Host header attacks
@@ -260,11 +278,34 @@ docker compose down	Stop all services
 docker compose up -d	Restart in background
 docker compose exec api pytest -v	Run tests
 
+### ⚙️ Application Startup & Shutdown
+TaskHub API now uses FastAPI event hooks to manage the MongoDB connection lifecycle.
+
+```python
+@app.on_event("startup")
+async def startup_event():
+    await connect_to_mongo()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await close_mongo_connection()
+✅ Ensures database connections open only when the app starts
+✅ Cleanly closes all connections when the container stops
+```
+
 🌐 API Documentation
 After running the containers:
 Swagger UI → http://localhost:8000/docs
 ReDoc → http://localhost:8000/redoc
 
+## 🧾 Recent Updates (vNext)
+### Database Connection Lifecycle
+- **database.py**: Added explicit connection lifecycle functions  
+  → Prevents premature DB connections and ensures clean shutdown
+- **main.py**: Added startup/shutdown event handlers  
+  → Automatically calls `connect_to_mongo()` and `close_mongo_connection()`
+- **test_api.py**: Handles database initialization and teardown in tests  
+  → Prevents `NoneType db` errors during isolated test runs
 
 📄 License
 MIT License © 2025 Suleiman Khasheboun suli.tempmail2022@gmail.com
