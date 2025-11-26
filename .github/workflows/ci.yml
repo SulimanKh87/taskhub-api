@@ -55,18 +55,11 @@ jobs:
           echo "jwt_refresh_days=1" >> .env
           echo "redis_broker=redis://localhost:6379/0" >> .env
 
-      # -------------------------
-      # Formatting / Linting
-      # -------------------------
       - name: Lint (Ruff)
         run: ruff check .
 
       - name: Format Check (Black)
         run: black --check .
 
-      # -------------------------
-      # Tests
-      # -------------------------
       - name: Run Tests
         run: pytest -v --disable-warnings
-g
