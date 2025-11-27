@@ -1,18 +1,21 @@
-🚀 TaskHub API — FastAPI + MongoDB + Celery + 
+🚀 TaskHub API — FastAPI + MongoDB + Celery +
 ![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
 
 ```markdown
-> **Version:** 1.1.0 — Database Connection Lifecycle Enhancement  & CI tests 
+> **Version:** 1.1.0 — Database Connection Lifecycle Enhancement & CI tests
 > *Release Date:* Nov 2025
 ```
 
 ## 📚 Overview
+
 A modern, containerized backend for task management with user authentication,
 async background jobs, and MongoDB persistence — built using FastAPI, Motor, Celery, and Redis.
 
 # TaskHub API
+
 is an async backend service for managing users and tasks.  
 It demonstrates:
+
 - Secure login & token-based authentication
 - Background task scheduling with Celery
 - Clean separation of routes, schemas, and database logic
@@ -46,23 +49,23 @@ TaskHub API now includes a complete CI pipeline powered by GitHub Actions.
 
 ### ✔ What CI Runs Automatically
 
-| **Step**    | **Tool**    | **Purpose**                              |
-|-------------|-------------|-------------------------------------------|
-| Linting     | Ruff        | Clean, error-free Python code            |
-| Formatting  | Black       | Enforced consistent code style           |
-| Unit Tests  | Pytest      | Validates API behavior                   |
-| DB Service  | MongoDB 7   | Real DB ensures reliable test execution  |
-
+| **Step**   | **Tool**  | **Purpose**                             |
+|------------|-----------|-----------------------------------------|
+| Linting    | Ruff      | Clean, error-free Python code           |
+| Formatting | Black     | Enforced consistent code style          |
+| Unit Tests | Pytest    | Validates API behavior                  |
+| DB Service | MongoDB 7 | Real DB ensures reliable test execution |
 
 ### ✔ CI Checks
+
 - `ruff check .`
 - `black --check .`
 - `pytest -v`
 
 CI status badge is displayed at the top of the README.
 
-
 🧭 System Architecture
+
 ``` mermaid
 graph TD
 
@@ -105,6 +108,7 @@ graph TD
     D --> E
     E --> D
 ```
+
 ⚙️ Workflow Summary
 Client → FastAPI
 The user (or Swagger UI) sends authenticated HTTP requests.
@@ -116,46 +120,48 @@ Celery Worker → Redis
 Stores task results and execution states in Redis for retrieval.
 
 🧱 Service Overview
-Service	Description	Docker Container
-FastAPI	REST API handling authentication and tasks	taskhub-api
-MongoDB	Stores users and tasks (NoSQL)	taskhub-mongo
-Redis	Message broker & Celery result backend	redis
-Celery Worker	Executes background jobs asynchronously	celery-worker
+Service Description Docker Container
+FastAPI REST API handling authentication and tasks taskhub-api
+MongoDB Stores users and tasks (NoSQL)    taskhub-mongo
+Redis Message broker & Celery result backend redis
+Celery Worker Executes background jobs asynchronously celery-worker
 
 taskhub-api/                                                         
 │  
-├── app/                                    📁 application source  
-│   ├── main.py               🚀 app entrypoint (FastAPI initialization & middleware)  
-│   ├── config.py             ⚙️ environment configuration (loads .env)  
-│   ├── database.py           🗃️ MongoDB async client (Motor)  
-│   ├── celery_app.py         🐇 Celery configuration (broker & backend)  
-│   ├── tasks.py              🔄 background task definitions  
-│   ├── security.py           🔐 JWT creation & bcrypt password hashing  
-│   │  
-│   ├── routes/               🌐 API route modules  
-│   │   ├── auth.py           👤 login & registration endpoints  
-│   │   └── tasks.py          ✅ CRUD endpoints for task operations  
-│   │  
-│   ├── schemas/              🧩 Pydantic data models  
-│   │   ├── user_schema.py    👥 user data validation  
-│   │   ├── task_schema.py    📋 task model definition  
-│   │   └── token_schema.py   🔑 JWT token schema  
-│   │  
-│   └── tests/                🧪 automated tests  
-│       └── test_api.py       🩺 health check & endpoint tests  
-│ 
-├── .env                      🗝️ environment secrets (excluded from git)  
-├── .gitignore                🚫 ignored files & folders  
-├── Dockerfile                🐳 build instructions for FastAPI container  
-├── docker-compose.yml        ⚙️ service orchestration (API, Mongo, Redis, Celery)  
-├── requirements.txt          📦 Python dependencies list  
-└── README.md                 📖 project documentation  
+├── app/ 📁 application source  
+│ ├── main.py 🚀 app entrypoint (FastAPI initialization & middleware)  
+│ ├── config.py ⚙️ environment configuration (loads .env)  
+│ ├── database.py 🗃️ MongoDB async client (Motor)  
+│ ├── celery_app.py 🐇 Celery configuration (broker & backend)  
+│ ├── tasks.py 🔄 background task definitions  
+│ ├── security.py 🔐 JWT creation & bcrypt password hashing  
+│ │  
+│ ├── routes/ 🌐 API route modules  
+│ │ ├── auth.py 👤 login & registration endpoints  
+│ │ └── tasks.py ✅ CRUD endpoints for task operations  
+│ │  
+│ ├── schemas/ 🧩 Pydantic data models  
+│ │ ├── user_schema.py 👥 user data validation  
+│ │ ├── task_schema.py 📋 task model definition  
+│ │ └── token_schema.py 🔑 JWT token schema  
+│ │  
+│ └── tests/ 🧪 automated tests  
+│ └── test_api.py 🩺 health check & endpoint tests  
+│
+├── .env 🗝️ environment secrets (excluded from git)  
+├── .gitignore 🚫 ignored files & folders  
+├── Dockerfile 🐳 build instructions for FastAPI container  
+├── docker-compose.yml ⚙️ service orchestration (API, Mongo, Redis, Celery)  
+├── requirements.txt 📦 Python dependencies list  
+└── README.md 📖 project documentation
 
 
 ---
 
 ## ⚙️ Environment Configuration
+
 Example `.env` file:
+
 ```bash
 # App
 SECRET_KEY=replace_me_with_secure_hex_key
@@ -173,10 +179,11 @@ CELERY_RESULT_BACKEND=redis://redis:6379/0
 ```
 
 🚀 Quick Start
+
 1. Clone & Build
-git clone https://github.com/sulimankh87/taskhub-api.git
-cd taskhub-api
-docker compose up -d --build
+   git clone https://github.com/sulimankh87/taskhub-api.git
+   cd taskhub-api
+   docker compose up -d --build
 
 ✅ This launches:
 FastAPI – Swagger UI → http://localhost:8000
@@ -185,65 +192,70 @@ Redis (Celery broker)
 Celery worker
 
 2. Run Tests
-docker compose exec api pytest -v
-Expected:
-app/tests/test_api.py::test_health_check PASSED
+   docker compose exec api pytest -v
+   Expected:
+   app/tests/test_api.py::test_health_check PASSED
 
 3. API Documentation
-Open your browser:
-👉 http://localhost:8000/docs
+   Open your browser:
+   👉 http://localhost:8000/docs
 
 Interactive Swagger UI for all endpoints.
 
 4. Example Workflow
-🧪 Example API Usage
+   🧪 Example API Usage
+
 # Register a new user
+
 POST /auth/register
 {
-  "username": "sami",
-  "email": "sami@example.com",
-  "password": "MySecurePassword123"
+"username": "sami",
+"email": "sami@example.com",
+"password": "MySecurePassword123"
 }
-
 
 ✅ Response:
 {
-  "id": "66f91a3d8c0b5aef0d123abc",
-  "username": "sami",
-  "email": "sami@example.com"
+"id": "66f91a3d8c0b5aef0d123abc",
+"username": "sami",
+"email": "sami@example.com"
 }
 
 # Login
+
 POST /auth/login
 (Form data → not JSON)
 
 # Field	Example
-username	username@example.com
-password	MySecurePassword123
+
+username username@example.com
+password MySecurePassword123
 
 ✅ Response:
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
+"access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+"token_type": "bearer"
 }
 
 # Create a new task
+
 POST /tasks/
 Use your Authorization: Bearer <access_token> header.
 {
-  "title": "Prepare deployment report",
-  "description": "Write Docker + CI/CD summary"
+"title": "Prepare deployment report",
+"description": "Write Docker + CI/CD summary"
 }
 
 ✅ Response:
 {
-  "id": "66f91b1f0f0a5bde01abcd99",
-  "title": "Prepare deployment report",
-  "status": "pending",
-  "owner_id": "66f91a3d8c0b5aef0d123abc"
+"id": "66f91b1f0f0a5bde01abcd99",
+"title": "Prepare deployment report",
+"status": "pending",
+"owner_id": "66f91a3d8c0b5aef0d123abc"
 }
 
 # Health check
+
 GET /health
 curl http://localhost:8000/health
 
@@ -252,7 +264,6 @@ GET /tasks/
 
 💀 Delete Task
 DELETE /tasks/{task_id}
-
 
 ✅ Response:
 {"status": "ok", "app": "taskhub-api"}
@@ -284,7 +295,7 @@ from app.database import connect_to_mongo, close_mongo_connection
 
 @pytest.mark.asyncio
 async def test_health_check():
-    await connect_to_mongo()
+await connect_to_mongo()
 
     async with AsyncClient(app=app, base_url="http://test") as client:
         res = await client.get("/health")
@@ -293,7 +304,6 @@ async def test_health_check():
     assert res.json()["status"] == "ok"
 
     await close_mongo_connection()
-
 
 🛡️ Security
 JWT authentication with bcrypt password hashing
@@ -307,14 +317,15 @@ Or on Kubernetes (future step):
 kubectl apply -f k8s/
 
 🧠 Developer Quick Commands
-Command	Description
-docker compose logs -f api	Stream FastAPI logs
-docker compose logs -f celery-worker	Watch Celery tasks
-docker compose down	Stop all services
-docker compose up -d	Restart in background
-docker compose exec api pytest -v	Run tests
+Command Description
+docker compose logs -f api Stream FastAPI logs
+docker compose logs -f celery-worker Watch Celery tasks
+docker compose down Stop all services
+docker compose up -d Restart in background
+docker compose exec api pytest -v Run tests
 
 ### ⚙️ Application Startup & Shutdown
+
 TaskHub API now uses FastAPI event hooks to manage the MongoDB connection lifecycle.
 
 ```python
@@ -322,11 +333,28 @@ TaskHub API now uses FastAPI event hooks to manage the MongoDB connection lifecy
 async def startup_event():
     await connect_to_mongo()
 
+
 @app.on_event("shutdown")
 async def shutdown_event():
     await close_mongo_connection()
-✅ Ensures database connections open only when the app starts
-✅ Cleanly closes all connections when the container stops
+
+✅ Ensures
+database
+connections
+open
+only
+when
+the
+app
+starts
+✅ Cleanly
+closes
+all
+connections
+when
+the
+container
+stops
 ```
 
 🌐 API Documentation

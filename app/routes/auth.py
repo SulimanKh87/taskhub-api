@@ -3,11 +3,19 @@
 import uuid  # Used to generate unique user IDs
 from datetime import datetime, timedelta  # Used to manage token expiration times
 
-from fastapi import APIRouter, Depends, HTTPException, \
-    status  # FastAPI utilities for routing, dependency injection, and HTTP errors
-from fastapi.security import OAuth2PasswordRequestForm  # Handles form-based login requests (username/password)
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+)  # FastAPI utilities for routing, dependency injection, and HTTP errors
+from fastapi.security import (
+    OAuth2PasswordRequestForm,
+)  # Handles form-based login requests (username/password)
 from jose import jwt  # Library to encode/decode JWT tokens
-from passlib.context import CryptContext  # Provides password hashing and verification with bcrypt
+from passlib.context import (
+    CryptContext,
+)  # Provides password hashing and verification with bcrypt
 
 from app.config import settings  # Import global configuration (.env-loaded)
 from app.database import db  # MongoDB async client (Motor)
@@ -23,6 +31,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # ==========================
 # Helper Functions
 # ==========================
+
 
 def hash_password(password: str) -> str:
     """Securely hash a password."""
@@ -40,9 +49,13 @@ def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_min
     """Generate JWT token."""
     # Creates a JSON Web Token (JWT) with an expiration time
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=expires_delta)       # Expiration timestamp
-    to_encode.update({"exp": expire})                                   # Add expiry claim to payload
-    encoded_jwt = jwt.encode(to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+    expire = datetime.utcnow() + timedelta(
+        minutes=expires_delta
+    )  # Expiration timestamp
+    to_encode.update({"exp": expire})  # Add expiry claim to payload
+    encoded_jwt = jwt.encode(
+        to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm
+    )
     return encoded_jwt
 
 
@@ -50,7 +63,10 @@ def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_min
 # Register New User
 # ==========================
 
-@router.post("/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED
+)
 async def register_user(user: UserCreate):
     # Check if the username already exists in MongoDB
     existing = await db.users.find_one({"username": user.username})
@@ -62,22 +78,25 @@ async def register_user(user: UserCreate):
 
     # Create the user document
     new_user = {
-        "_id": str(uuid.uuid4()),                # Generate unique ID
+        "_id": str(uuid.uuid4()),  # Generate unique ID
         "username": user.username,
         "hashed_password": hashed_pw,
-        "created_at": datetime.utcnow(),         # Record creation timestamp
+        "created_at": datetime.utcnow(),  # Record creation timestamp
     }
 
     # Insert user into MongoDB
     await db.users.insert_one(new_user)
 
     # Return public user info (excluding password)
-    return UserPublic(id=new_user["_id"], username=user.username, created_at=new_user["created_at"])
+    return UserPublic(
+        id=new_user["_id"], username=user.username, created_at=new_user["created_at"]
+    )
 
 
 # ==========================
 # Login and Get Token
 # ==========================
+
 
 @router.post("/login", response_model=Token)
 async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -94,7 +113,7 @@ async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     # Generate refresh token (longer expiration)
     refresh_token = create_access_token(
         data={"sub": user["username"]},
-        expires_delta=settings.jwt_refresh_days * 1440  # convert days → minutes
+        expires_delta=settings.jwt_refresh_days * 1440,  # convert days → minutes
     )
 
     # Return both tokens to the client

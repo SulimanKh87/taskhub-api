@@ -1,7 +1,8 @@
-import pytest                                  # Pytest is used for automated testing
-from httpx import AsyncClient                  # HTTPX allows async HTTP requests to FastAPI
-from app.main import app                       # Import the FastAPI application instance
-from app.database import connect_to_mongo, close_mongo_connection # DB connection handlers
+import pytest  # Pytest is used for automated testing
+from httpx import AsyncClient  # HTTPX allows async HTTP requests to FastAPI
+
+from app.database import connect_to_mongo, close_mongo_connection  # DB connection handlers
+from app.main import app  # Import the FastAPI application instance
 
 
 # This test checks whether the /health endpoint is working properly

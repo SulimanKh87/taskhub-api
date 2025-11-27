@@ -4,7 +4,11 @@ import uuid  # Used for generating unique task IDs
 from datetime import datetime  # For timestamps
 from typing import List  # For defining response type hints
 
-from fastapi import APIRouter, HTTPException, status  # FastAPI tools for building routes and error handling
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    status,
+)  # FastAPI tools for building routes and error handling
 from jose import jwt, JWTError  # For decoding and validating JWT tokens
 
 from app.config import settings  # Load app configuration
@@ -19,6 +23,7 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 # Helper Function
 # ==========================
 
+
 async def get_current_user(token: str) -> str:
     """Decode and verify JWT."""
     # If token is invalid or expired, raise 401 Unauthorized
@@ -30,7 +35,9 @@ async def get_current_user(token: str) -> str:
 
     try:
         # Decode the JWT to extract the username
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
+        payload = jwt.decode(
+            token, settings.jwt_secret, algorithms=[settings.jwt_algorithm]
+        )
         username: str = payload.get("sub")  # The “sub” claim holds username
         if username is None:
             raise credentials_exception
@@ -43,6 +50,7 @@ async def get_current_user(token: str) -> str:
 # ==========================
 # Create New Task
 # ==========================
+
 
 @router.post("/", response_model=TaskResponse, status_code=status.HTTP_201_CREATED)
 async def create_task(task: TaskCreate, token: str):
@@ -62,12 +70,15 @@ async def create_task(task: TaskCreate, token: str):
     await db.tasks.insert_one(new_task)
 
     # Return a Pydantic-validated response
-    return TaskResponse(id=new_task["_id"], **task.dict(), created_at=new_task["created_at"])
+    return TaskResponse(
+        id=new_task["_id"], **task.dict(), created_at=new_task["created_at"]
+    )
 
 
 # ==========================
 # Get All Tasks
 # ==========================
+
 
 @router.get("/", response_model=List[TaskResponse])
 async def get_tasks(token: str):
@@ -85,7 +96,7 @@ async def get_tasks(token: str):
             title=t["title"],
             description=t["description"],
             owner=t["owner"],
-            created_at=t["created_at"]
+            created_at=t["created_at"],
         )
         for t in tasks
     ]
@@ -94,6 +105,7 @@ async def get_tasks(token: str):
 # ==========================
 # Delete Task
 # ==========================
+
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_task(task_id: str, token: str):

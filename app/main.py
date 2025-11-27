@@ -1,9 +1,10 @@
-from fastapi import FastAPI                          # FastAPI main framework
-from fastapi.middleware.cors import CORSMiddleware   # Enables CORS for frontend calls
+from fastapi import FastAPI  # FastAPI main framework
+from fastapi.middleware.cors import CORSMiddleware  # Enables CORS for frontend calls
 from fastapi.middleware.trustedhost import TrustedHostMiddleware  # Prevents Host header attacks
-from app.config import settings                      # Load app configuration
-from app.routes import auth, tasks                   # Import route modules
-from app.database import connect_to_mongo, close_mongo_connection # DB connection handlers
+
+from app.config import settings  # Load app configuration
+from app.database import connect_to_mongo, close_mongo_connection  # DB connection handlers
+from app.routes import auth, tasks  # Import route modules
 
 # Initialize FastAPI app with title and debug mode from config
 app = FastAPI(title=settings.app_name, debug=settings.app_debug)

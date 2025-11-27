@@ -12,9 +12,10 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Password Hashing Utilities
 # ==========================
 
+
 def hash_password(password: str):
     """Hash a plain password securely."""
-    return pwd_context.hash(password)           # Returns a bcrypt-hashed version
+    return pwd_context.hash(password)  # Returns a bcrypt-hashed version
 
 
 def verify_password(plain: str, hashed: str):
@@ -26,10 +27,11 @@ def verify_password(plain: str, hashed: str):
 # JWT Token Creation
 # ==========================
 
+
 def create_access_token(data: dict):
     """Generate short-lived access JWT token."""
     expire = datetime.utcnow() + timedelta(minutes=settings.jwt_expire_minutes)
-    data.update({"exp": expire})                # Add expiration claim
+    data.update({"exp": expire})  # Add expiration claim
     return jwt.encode(data, settings.jwt_secret, algorithm=settings.jwt_algorithm)
 
 

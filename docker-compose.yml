@@ -45,7 +45,7 @@ services:
     container_name: redis
     restart: always
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]       # Health check to ensure Redis is ready
+      test: [ "CMD", "redis-cli", "ping" ]       # Health check to ensure Redis is ready
       interval: 5s
       timeout: 3s
       retries: 3

@@ -2,7 +2,9 @@
 
 from datetime import datetime
 from typing import Optional
+
 from pydantic import BaseModel, Field
+
 
 class TaskModel(BaseModel):
     """MongoDB document model for tasks."""
