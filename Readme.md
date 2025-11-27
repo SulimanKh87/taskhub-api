@@ -1,6 +1,8 @@
-🚀 TaskHub API — FastAPI + MongoDB + Celery
+🚀 TaskHub API — FastAPI + MongoDB + Celery + 
+![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
+
 ```markdown
-> **Version:** 1.1.0 — Database Connection Lifecycle Enhancement  
+> **Version:** 1.1.0 — Database Connection Lifecycle Enhancement  & CI tests 
 > *Release Date:* Nov 2025
 ```
 
@@ -37,6 +39,28 @@ Pydantic v2
 Pytest / HTTPX
 JWT (python-jose)
 bcrypt
+
+## 🔍 Continuous Integration & Code Quality (NEW)
+
+TaskHub API now includes a complete CI pipeline powered by GitHub Actions.
+
+### ✔ What CI Runs Automatically
+
+| **Step**    | **Tool**    | **Purpose**                              |
+|-------------|-------------|-------------------------------------------|
+| Linting     | Ruff        | Clean, error-free Python code            |
+| Formatting  | Black       | Enforced consistent code style           |
+| Unit Tests  | Pytest      | Validates API behavior                   |
+| DB Service  | MongoDB 7   | Real DB ensures reliable test execution  |
+
+
+### ✔ CI Checks
+- `ruff check .`
+- `black --check .`
+- `pytest -v`
+
+CI status badge is displayed at the top of the README.
+
 
 🧭 System Architecture
 ``` mermaid
@@ -233,31 +257,43 @@ DELETE /tasks/{task_id}
 ✅ Response:
 {"status": "ok", "app": "taskhub-api"}
 
-🧪 Testing (inside container)
-Run tests with:
+🧪 Testing
+▶️ Run tests locally
+pytest -v --disable-warnings
+
+▶️ Run tests inside Docker
 docker compose exec api pytest -v
 
-✅ Expected output:
+✔ Expected Output
 app/tests/test_api.py::test_health_check PASSED
 
-🧠 Testing Notes
-Includes test_health_check for CI
-Use pytest --disable-warnings -v for cleaner output
-Add new tests under app/tests/
+🧠 Testing Notes (Updated)
+TaskHub API uses Pytest together with Ruff (linting), Black (formatting), and GitHub Actions CI.
 
-```markdown
-### 🧪 Testing Notes (Updated)
-- Tests now manually initialize and close MongoDB connections  
-  to avoid `NoneType db` errors during isolated test runs.
-- Example:
-  ```python
-  from app.database import connect_to_mongo, close_mongo_connection
-  @pytest.fixture(scope="session", autouse=True)
-  async def init_db():
-      await connect_to_mongo()
-      yield
-      await close_mongo_connection()
-```
+CI automatically runs:
+ruff check .
+black --check .
+pytest -v
+A real MongoDB 7 service for DB-backed tests
+
+🗄 Database Initialization in Tests
+Tests now manually initialize and close MongoDB connections to prevent NoneType db issues.
+
+Example:
+from app.database import connect_to_mongo, close_mongo_connection
+
+@pytest.mark.asyncio
+async def test_health_check():
+    await connect_to_mongo()
+
+    async with AsyncClient(app=app, base_url="http://test") as client:
+        res = await client.get("/health")
+
+    assert res.status_code == 200
+    assert res.json()["status"] == "ok"
+
+    await close_mongo_connection()
+
 
 🛡️ Security
 JWT authentication with bcrypt password hashing
@@ -299,6 +335,16 @@ Swagger UI → http://localhost:8000/docs
 ReDoc → http://localhost:8000/redoc
 
 ## 🧾 Recent Updates (vNext)
+
+```markdown 
+### 🔧 CI & Code Quality Enhancements
+- Added full GitHub Actions CI workflow
+- Integrated Ruff linting (static analysis)
+- Added Black formatting enforcement
+- Cleaned unused imports and improved module structure
+- Ensures every push/PR passes quality checks before merging
+
+
 ### Database Connection Lifecycle
 - **database.py**: Added explicit connection lifecycle functions  
   → Prevents premature DB connections and ensures clean shutdown
@@ -306,6 +352,7 @@ ReDoc → http://localhost:8000/redoc
   → Automatically calls `connect_to_mongo()` and `close_mongo_connection()`
 - **test_api.py**: Handles database initialization and teardown in tests  
   → Prevents `NoneType db` errors during isolated test runs
+
 
 📄 License
 MIT License © 2025 Suleiman Khasheboun suli.tempmail2022@gmail.com
