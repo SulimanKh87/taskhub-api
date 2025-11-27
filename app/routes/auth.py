@@ -19,7 +19,10 @@ from passlib.context import (
 
 from app.config import settings  # Import global configuration (.env-loaded)
 from app.database import db  # MongoDB async client (Motor)
-from app.schemas import UserCreate, UserPublic, Token  # Pydantic schemas for validation
+# Pydantic schemas for validation
+from app.schemas.user_schema import UserCreate, UserPublic
+from app.schemas.token_schema import Token
+
 
 # Create a router instance for all /auth routes
 router = APIRouter(prefix="/auth", tags=["Authentication"])
