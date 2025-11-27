@@ -8,11 +8,16 @@ from pydantic import BaseModel, EmailStr, Field
 
 class UserModel(BaseModel):
     """MongoDB document model for users."""
-    id: Optional[str] = Field(alias="_id", default=None)       # MongoDB _id field alias
-    username: str = Field(..., min_length=3, max_length=50)    # Username must be 3–50 chars
-    email: EmailStr                                            # Validated email address
-    hashed_password: str                                       # Stored securely (bcrypt)
-    created_at: datetime = Field(default_factory=datetime.utcnow)  # Timestamp of creation
+
+    id: Optional[str] = Field(alias="_id", default=None)  # MongoDB _id field alias
+    username: str = Field(
+        ..., min_length=3, max_length=50
+    )  # Username must be 3–50 chars
+    email: EmailStr  # Validated email address
+    hashed_password: str  # Stored securely (bcrypt)
+    created_at: datetime = Field(
+        default_factory=datetime.utcnow
+    )  # Timestamp of creation
 
     class Config:
         # Enable aliasing for MongoDB’s "_id"
