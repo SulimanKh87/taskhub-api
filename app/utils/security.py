@@ -1,7 +1,9 @@
-from jose import JWTError, jwt                 # JWT for token creation and validation
-from datetime import datetime, timedelta       # Used for token expiration
-from passlib.context import CryptContext        # Provides password hashing
-from app.config import settings                 # Load JWT secret, algorithm, and expiry
+from datetime import datetime, timedelta  # Used for token expiration
+
+from jose import jwt  # JWT for token creation and validation
+from passlib.context import CryptContext  # Provides password hashing
+
+from app.config import settings  # Load JWT secret, algorithm, and expiry
 
 # Initialize password hashing using bcrypt
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
