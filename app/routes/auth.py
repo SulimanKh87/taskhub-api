@@ -1,16 +1,17 @@
 # Handles user authentication (register + login) using JWT and bcrypt
 
-from fastapi import APIRouter, Depends, HTTPException, status          # FastAPI utilities for routing, dependency injection, and HTTP errors
-from fastapi.security import OAuth2PasswordRequestForm                 # Handles form-based login requests (username/password)
-from datetime import datetime, timedelta                               # Used to manage token expiration times
-from jose import jwt                                                   # Library to encode/decode JWT tokens
-from passlib.context import CryptContext                               # Provides password hashing and verification with bcrypt
-from pymongo import ReturnDocument                                     # (Optional import) for MongoDB document updates — not used here
-from app.config import settings                                        # Import global configuration (.env-loaded)
-from app.database import db                                            # MongoDB async client (Motor)
-from app.schemas import UserCreate, UserLogin, UserPublic, Token       # Pydantic schemas for validation
-import uuid                                                            # Used to generate unique user IDs
-import asyncio                                                         # Used for async operations (not used here directly)
+import uuid  # Used to generate unique user IDs
+from datetime import datetime, timedelta  # Used to manage token expiration times
+
+from fastapi import APIRouter, Depends, HTTPException, \
+    status  # FastAPI utilities for routing, dependency injection, and HTTP errors
+from fastapi.security import OAuth2PasswordRequestForm  # Handles form-based login requests (username/password)
+from jose import jwt  # Library to encode/decode JWT tokens
+from passlib.context import CryptContext  # Provides password hashing and verification with bcrypt
+
+from app.config import settings  # Import global configuration (.env-loaded)
+from app.database import db  # MongoDB async client (Motor)
+from app.schemas import UserCreate, UserPublic, Token  # Pydantic schemas for validation
 
 # Create a router instance for all /auth routes
 router = APIRouter(prefix="/auth", tags=["Authentication"])

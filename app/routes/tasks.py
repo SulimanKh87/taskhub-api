@@ -1,13 +1,15 @@
 # Manages CRUD operations for tasks — protected by JWT authentication
 
-from fastapi import APIRouter, Depends, HTTPException, status        # FastAPI tools for building routes and error handling
-from jose import jwt, JWTError                                       # For decoding and validating JWT tokens
-from datetime import datetime                                        # For timestamps
-from typing import List                                              # For defining response type hints
-from app.config import settings                                      # Load app configuration
-from app.database import db                                          # MongoDB connection
-from app.schemas import TaskCreate, TaskResponse                     # Pydantic schemas for validation
-import uuid                                                          # Used for generating unique task IDs
+import uuid  # Used for generating unique task IDs
+from datetime import datetime  # For timestamps
+from typing import List  # For defining response type hints
+
+from fastapi import APIRouter, HTTPException, status  # FastAPI tools for building routes and error handling
+from jose import jwt, JWTError  # For decoding and validating JWT tokens
+
+from app.config import settings  # Load app configuration
+from app.database import db  # MongoDB connection
+from app.schemas import TaskCreate, TaskResponse  # Pydantic schemas for validation
 
 # Define router for all /tasks routes
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
