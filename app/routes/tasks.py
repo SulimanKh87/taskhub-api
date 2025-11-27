@@ -13,7 +13,10 @@ from jose import jwt, JWTError  # For decoding and validating JWT tokens
 
 from app.config import settings  # Load app configuration
 from app.database import db  # MongoDB connection
-from app.schemas.task_schema import TaskResponse, TaskCreate  # Pydantic schemas for validation
+from app.schemas.task_schema import (
+    TaskResponse,
+    TaskCreate,
+)  # Pydantic schemas for validation
 
 # Define router for all /tasks routes
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
