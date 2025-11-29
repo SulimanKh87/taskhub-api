@@ -2,8 +2,8 @@
 ![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
 
 ```markdown
-> **Version:** 1.1.0 — Database Connection Lifecycle Enhancement & CI tests
-> *Release Date:* Nov 2025
+> **Version:** 1.2.0 — Idempotent Background Jobs + Distributed CI
+> **Release Date:** Dec 2025
 ```
 
 ## 📚 Overview
@@ -31,6 +31,9 @@ It demonstrates:
 - JWT tokens with python-jose
 - Password hashing with bcrypt
 - Health check endpoint for monitoring
+- GitHub Actions CI (linting, testing, distributed service testing)
+- Idempotent background jobs using Celery (NEW)
+
 
 🧱 Tech Stack
 Python 3.12
@@ -42,6 +45,28 @@ Pydantic v2
 Pytest / HTTPX
 JWT (python-jose)
 bcrypt
+
+## 🔄 Idempotent Background Jobs (NEW)
+
+TaskHub API now supports idempotent Celery background jobs.
+
+This ensures:
+
+- No background job runs twice
+- Retries do not duplicate work
+- Worker restarts and crashes are safe
+- Email sending and heavy operations are retry-safe
+- Mongo-backed `job_log` prevents duplicate executions
+
+A new file `workers/idempotency.py` manages job state using:
+
+- job_id  
+- status (in_progress / completed)  
+- result  
+- created_at  
+
+Before a task runs, Celery checks if the job was already completed and returns the saved result.
+
 
 ## 🔍 Continuous Integration & Code Quality (NEW)
 
@@ -55,6 +80,21 @@ TaskHub API now includes a complete CI pipeline powered by GitHub Actions.
 | Formatting | Black     | Enforced consistent code style          |
 | Unit Tests | Pytest    | Validates API behavior                  |
 | DB Service | MongoDB 7 | Real DB ensures reliable test execution |
+
+### ✔ Distributed Services Added to CI (NEW)
+
+The CI workflow now launches:
+
+- **MongoDB 7** — real database for tests  
+- **Redis 7** — Celery broker + result backend  
+- **Celery Worker** — runs background tasks during CI  
+
+This allows end-to-end testing of:
+
+- Async routes
+- Database operations
+- Celery tasks
+- Idempotent background jobs
 
 ### ✔ CI Checks
 
@@ -126,34 +166,56 @@ MongoDB Stores users and tasks (NoSQL)    taskhub-mongo
 Redis Message broker & Celery result backend redis
 Celery Worker Executes background jobs asynchronously celery-worker
 
-taskhub-api/                                                         
-│  
-├── app/ 📁 application source  
-│ ├── main.py 🚀 app entrypoint (FastAPI initialization & middleware)  
-│ ├── config.py ⚙️ environment configuration (loads .env)  
-│ ├── database.py 🗃️ MongoDB async client (Motor)  
-│ ├── celery_app.py 🐇 Celery configuration (broker & backend)  
-│ ├── tasks.py 🔄 background task definitions  
-│ ├── security.py 🔐 JWT creation & bcrypt password hashing  
-│ │  
-│ ├── routes/ 🌐 API route modules  
-│ │ ├── auth.py 👤 login & registration endpoints  
-│ │ └── tasks.py ✅ CRUD endpoints for task operations  
-│ │  
-│ ├── schemas/ 🧩 Pydantic data models  
-│ │ ├── user_schema.py 👥 user data validation  
-│ │ ├── task_schema.py 📋 task model definition  
-│ │ └── token_schema.py 🔑 JWT token schema  
-│ │  
-│ └── tests/ 🧪 automated tests  
-│ └── test_api.py 🩺 health check & endpoint tests  
+Project Structure:
+
+taskhub-api/
 │
-├── .env 🗝️ environment secrets (excluded from git)  
-├── .gitignore 🚫 ignored files & folders  
-├── Dockerfile 🐳 build instructions for FastAPI container  
-├── docker-compose.yml ⚙️ service orchestration (API, Mongo, Redis, Celery)  
-├── requirements.txt 📦 Python dependencies list  
-└── README.md 📖 project documentation
+├── app/                                      📁 Application Source
+│   │
+│   ├── main.py                                🚀 FastAPI application entrypoint
+│   ├── config.py                              ⚙️ Global environment configuration (pydantic-settings)
+│   ├── database.py                            🗃️ MongoDB async client (Motor)
+│   │
+│   ├── routes/                                🌐 API Route Modules
+│   │   ├── auth.py                            👤 User registration & login endpoints
+│   │   └── tasks.py                           ✅ Task CRUD endpoints (JWT-protected)
+│   │
+│   ├── workers/                               🐇 Celery Background Job System
+│   │   ├── __init__.py
+│   │   ├── celery_app.py                      ⚙️ Celery worker + welcome email task
+│   │   ├── idempotency.py                     🔄 Idempotent job execution layer (Mongo-backed)
+│   │   ├── database.py                        🗃️ Worker-specific MongoDB connection
+│   │   └── config.py                          ⚙️ Celery worker environment configuration
+│   │
+│   ├── schemas/                               🧩 Pydantic Schemas (Request & Response Models)
+│   │   ├── user_schema.py                     👥 User creation / login / public models
+│   │   ├── task_schema.py                     📋 Task create & response schemas
+│   │   └── token_schema.py                    🔑 JWT token payload & response schemas
+│   │
+│   ├── models/                                🗄️ MongoDB Document Models
+│   │   ├── user_model.py                      👤 Pydantic model for MongoDB user documents
+│   │   └── task_model.py                      📝 Pydantic model for MongoDB task documents
+│   │
+│   ├── utils/                                 🛠️ Utility Logic
+│   │   └── security.py                        🔐 Password hashing (bcrypt) & JWT helpers
+│   │
+│   ├── workers/                               🐇 Celery Background Job System
+│   │   ├── __init__.py
+│   │   ├── celery_app.py                      ⚙️ Celery worker + tasks
+│   │   ├── idempotency.py                     🔄 Idempotent job execution layer (Mongo-backed)
+│   │   ├── database.py                        🗃️ Worker-specific MongoDB connection
+│   │   └── config.py                          ⚙️ Celery worker environment configuration
+│   └── tests/                                 🧪 Automated Test Suite
+│       ├── test_api.py                        🩺 Health check & basic API tests
+│       └── test_idempotency.py                🔁 Tests idempotent Celery job behavior
+│
+├── docker-compose.yml                         ⚙️ Orchestration for API + MongoDB + Redis + Celery worker
+├── Dockerfile                                 🐳 FastAPI Docker image build
+├── requirements.txt                           📦 Python dependencies
+├── .gitignore                                 🚫 Git ignored files
+├── .env                                       🗝️ Environment variables (not committed)
+└── README.md                                  📖 Project documentation
+
 
 
 ---
@@ -380,6 +442,30 @@ ReDoc → http://localhost:8000/redoc
   → Automatically calls `connect_to_mongo()` and `close_mongo_connection()`
 - **test_api.py**: Handles database initialization and teardown in tests  
   → Prevents `NoneType db` errors during isolated test runs
+
+### 🔄 Idempotent Background Jobs (NEW)
+- Added Mongo-backed `job_log` to prevent duplicate background job execution  
+- Implemented idempotent layer in `workers/idempotency.py`  
+- Updated Celery tasks to check for previous results before running  
+- Ensures email tasks and future workloads run **exactly once**, even under retries  
+- Production-safe behavior for distributed workers  
+
+### 🐇 Celery Worker Integration (NEW)
+- CI now runs a full Celery worker  
+- Ensures background jobs are tested end-to-end  
+- Worker bootstraps automatically inside GitHub Actions  
+
+### 🧪 New Idempotency Test
+- Added `test_idempotency.py`  
+- Verifies Celery results are identical across multiple runs  
+- Ensures `job_log` stores only one record  
+- Prevents duplicate sends and duplicate DB writes  
+
+### 🔧 CI Enhancements (Updated)
+- Added Redis 7 service for Celery broker + result backend  
+- Added Celery worker startup step  
+- Added PYTHONPATH fix to prevent import errors in CI  
+- Added full distributed environment testing (API + DB + Redis + Worker)  
 
 
 📄 License

@@ -2,6 +2,7 @@
 
 import uuid  # Used to generate unique user IDs
 from datetime import datetime, timedelta  # Used to manage token expiration times
+from app.workers.celery_app import celery_app
 
 from fastapi import (
     APIRouter,
@@ -20,6 +21,7 @@ from passlib.context import (
 from app.config import settings  # Import global configuration (.env-loaded)
 from app.database import db  # MongoDB async client (Motor)
 from app.schemas.token_schema import Token
+
 # Pydantic schemas for validation
 from app.schemas.user_schema import UserCreate, UserPublic
 
@@ -88,6 +90,19 @@ async def register_user(user: UserCreate):
 
     # Insert user into MongoDB
     await db.users.insert_one(new_user)
+
+    # ==========================
+    # IDEMPOTENT BACKGROUND JOB
+    # ==========================
+
+    # Unique idempotency key for this logical email
+    job_id = f"welcome_email:{new_user['_id']}"
+
+    # Pass email + job_id to Celery
+    celery_app.send_task(
+        "app.celery_app.send_welcome_email",
+        args=[new_user["username"], job_id],
+    )
 
     # Return public user info (excluding password)
     return UserPublic(

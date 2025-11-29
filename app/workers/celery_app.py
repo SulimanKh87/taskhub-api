@@ -1,6 +1,10 @@
+import asyncio
+from datetime import datetime
+
 from celery import Celery  # Celery handles distributed background tasks
 
 from app.config import settings  # Load environment variables (broker URL, etc.)
+from app.idempotency import get_job_result, mark_job_started, save_job_result
 
 # Create and configure a Celery instance named 'taskhub'
 celery_app = Celery(
@@ -21,10 +25,33 @@ celery_app.conf.update(
 
 
 # Define a background task
-@celery_app.task(autoretry_for=(Exception,), retry_backoff=True)
 # autoretry_for → retries on exception
 # retry_backoff=True → waits progressively longer between retries
-def send_welcome_email(email: str):
-    # Simulates sending a welcome email asynchronously
-    print(f"Sending welcome email to: {email}")
-    return {"status": "sent", "email": email}
+@celery_app.task(bind=True, autoretry_for=(Exception,), retry_backoff=True)
+def send_welcome_email(self, email: str, job_id: str):
+    """
+    Idempotent Celery email task.
+    job_id must be UNIQUE for every logical email.
+    """
+
+    loop = asyncio.get_event_loop()
+
+    # Step 1 — check if already processed
+    existing = loop.run_until_complete(get_job_result(job_id))
+    if existing:
+        return existing["result"]
+
+    # Step 2 — mark as started
+    loop.run_until_complete(mark_job_started(job_id))
+
+    # Step 3 — actual logic
+    result = {
+        "status": "sent",
+        "email": email,
+        "processed_at": datetime.utcnow().isoformat(),
+    }
+
+    # Step 4 — save result
+    loop.run_until_complete(save_job_result(job_id, result))
+
+    return result
