@@ -18,10 +18,20 @@ jobs:
         ports:
           - 27017:27017
         options: >-
-          --health-cmd "mongosh --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
+          --health-cmd="mongosh --eval 'db.runCommand({ ping: 1 })'"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout code
@@ -61,5 +71,11 @@ jobs:
       - name: Format Check (Black)
         run: black --check .
 
+      - name: Start Celery Worker
+        run: |
+          nohup celery -A app.workers.celery_app worker --loglevel=INFO &
+          sleep 5
+
       - name: Run Tests
         run: pytest -v --disable-warnings
+b
