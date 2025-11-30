@@ -174,39 +174,39 @@ Project Structure:
 
 taskhub-api/
 │
-├── 🧠 app/                      # Application Source Code
+├── app/                          # Application Source Code
 │   │
-│   ├── 🚀 main.py               # FastAPI entrypoint (routes, middleware)
-│   ├── ⚙️ config.py             # Global settings via pydantic-settings
-│   ├── 🗄️ database.py           # MongoDB async client (Motor)
-│   ├── 🐇 celery_app.py         # Celery worker configuration
-│   ├── 🔄 tasks.py              # Background jobs (Celery tasks)
-│   ├── 🔐 security.py           # Password hashing + JWT helpers
+│   ├── main.py                   # FastAPI entrypoint (routes, middleware)
+│   ├── config.py                 # Global settings via pydantic-settings
+│   ├── database.py               # MongoDB async client (Motor)
+│   ├── celery_app.py             # Celery worker configuration
+│   ├── tasks.py                  # Background jobs (Celery tasks)
+│   ├── security.py               # Password hashing + JWT helpers
 │   │
-│   ├── 🌐 routes/               # API Route Modules
-│   │   ├── 👤 auth.py           # User registration + login
-│   │   └── ✅ tasks.py          # Task CRUD, JWT-protected
+│   ├── routes/                   # API Route Modules
+│   │   ├── auth.py               # User registration + login
+│   │   └── tasks.py              # Task CRUD, JWT-protected
 │   │
-│   ├── 🧩 schemas/              # Pydantic Request/Response Schemas
-│   │   ├── user_schema.py       # User create/login/public models
-│   │   ├── task_schema.py       # Task create/response schemas
-│   │   └── token_schema.py      # JWT token models
+│   ├── schemas/                  # Pydantic Request/Response Schemas
+│   │   ├── user_schema.py        # User create/login/public models
+│   │   ├── task_schema.py        # Task create/response schemas
+│   │   └── token_schema.py       # JWT token models
 │   │
-│   ├── 📦 models/               # MongoDB Document Models (Pydantic)
+│   ├── models/                   # MongoDB Document Models (Pydantic)
 │   │   ├── user_model.py
 │   │   └── task_model.py
 │   │
-│   └── 🧪 tests/                 # Automated Test Suite
-│       ├── test_api.py          # Health check & API tests
-│       └── test_idempotency.py  # Idempotent job execution tests
+│   └── tests/                    # Automated Test Suite
+│       ├── test_api.py           # Health check & API tests
+│       └── test_idempotency.py   # Idempotent job execution tests
 │
-├── 🐳 Dockerfile                # API image build instructions
-├── 🐳 docker-compose.yml        # Orchestration (FastAPI + MongoDB + Redis + Celery)
-├── 📦 requirements.txt           # Python dependencies
-├── 🔐 .env.example               # Environment variable template
-├── 🚫 .gitignore                 # Git ignored files
-└── 📘 README.md                  # Project documentation
-g
+├── docker-compose.yml            # Orchestration (API + MongoDB + Redis + Celery)
+├── Dockerfile                    # API image build instructions
+├── requirements.txt               # Python dependencies
+├── .env.example                  # Environment variable template
+├── .gitignore                    # Git ignored files
+└── README.md                     # Project documentation
+
 
 ---
 
