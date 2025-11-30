@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.workers.database import db
+from app.database import db
 
 
 async def get_job_result(job_id: str):
