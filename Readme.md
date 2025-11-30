@@ -168,55 +168,45 @@ Celery Worker Executes background jobs asynchronously celery-worker
 
 Project Structure:
 
+📁 Project Structure
+
+📦 taskhub-api/ — FastAPI backend with MongoDB, Redis & Celery
+
 taskhub-api/
 │
-├── app/                                      📁 Application Source
+├── 🧠 app/                      # Application Source Code
 │   │
-│   ├── main.py                                🚀 FastAPI application entrypoint
-│   ├── config.py                              ⚙️ Global environment configuration (pydantic-settings)
-│   ├── database.py                            🗃️ MongoDB async client (Motor)
+│   ├── 🚀 main.py               # FastAPI entrypoint (routes, middleware)
+│   ├── ⚙️ config.py             # Global settings via pydantic-settings
+│   ├── 🗄️ database.py           # MongoDB async client (Motor)
+│   ├── 🐇 celery_app.py         # Celery worker configuration
+│   ├── 🔄 tasks.py              # Background jobs (Celery tasks)
+│   ├── 🔐 security.py           # Password hashing + JWT helpers
 │   │
-│   ├── routes/                                🌐 API Route Modules
-│   │   ├── auth.py                            👤 User registration & login endpoints
-│   │   └── tasks.py                           ✅ Task CRUD endpoints (JWT-protected)
+│   ├── 🌐 routes/               # API Route Modules
+│   │   ├── 👤 auth.py           # User registration + login
+│   │   └── ✅ tasks.py          # Task CRUD, JWT-protected
 │   │
-│   ├── workers/                               🐇 Celery Background Job System
-│   │   ├── __init__.py
-│   │   ├── celery_app.py                      ⚙️ Celery worker + welcome email task
-│   │   ├── idempotency.py                     🔄 Idempotent job execution layer (Mongo-backed)
-│   │   ├── database.py                        🗃️ Worker-specific MongoDB connection
-│   │   └── config.py                          ⚙️ Celery worker environment configuration
+│   ├── 🧩 schemas/              # Pydantic Request/Response Schemas
+│   │   ├── user_schema.py       # User create/login/public models
+│   │   ├── task_schema.py       # Task create/response schemas
+│   │   └── token_schema.py      # JWT token models
 │   │
-│   ├── schemas/                               🧩 Pydantic Schemas (Request & Response Models)
-│   │   ├── user_schema.py                     👥 User creation / login / public models
-│   │   ├── task_schema.py                     📋 Task create & response schemas
-│   │   └── token_schema.py                    🔑 JWT token payload & response schemas
+│   ├── 📦 models/               # MongoDB Document Models (Pydantic)
+│   │   ├── user_model.py
+│   │   └── task_model.py
 │   │
-│   ├── models/                                🗄️ MongoDB Document Models
-│   │   ├── user_model.py                      👤 Pydantic model for MongoDB user documents
-│   │   └── task_model.py                      📝 Pydantic model for MongoDB task documents
-│   │
-│   ├── utils/                                 🛠️ Utility Logic
-│   │   └── security.py                        🔐 Password hashing (bcrypt) & JWT helpers
-│   │
-│   ├── workers/                               🐇 Celery Background Job System
-│   │   ├── __init__.py
-│   │   ├── celery_app.py                      ⚙️ Celery worker + tasks
-│   │   ├── idempotency.py                     🔄 Idempotent job execution layer (Mongo-backed)
-│   │   ├── database.py                        🗃️ Worker-specific MongoDB connection
-│   │   └── config.py                          ⚙️ Celery worker environment configuration
-│   └── tests/                                 🧪 Automated Test Suite
-│       ├── test_api.py                        🩺 Health check & basic API tests
-│       └── test_idempotency.py                🔁 Tests idempotent Celery job behavior
+│   └── 🧪 tests/                 # Automated Test Suite
+│       ├── test_api.py          # Health check & API tests
+│       └── test_idempotency.py  # Idempotent job execution tests
 │
-├── docker-compose.yml                         ⚙️ Orchestration for API + MongoDB + Redis + Celery worker
-├── Dockerfile                                 🐳 FastAPI Docker image build
-├── requirements.txt                           📦 Python dependencies
-├── .gitignore                                 🚫 Git ignored files
-├── .env                                       🗝️ Environment variables (not committed)
-└── README.md                                  📖 Project documentation
-
-
+├── 🐳 Dockerfile                # API image build instructions
+├── 🐳 docker-compose.yml        # Orchestration (FastAPI + MongoDB + Redis + Celery)
+├── 📦 requirements.txt           # Python dependencies
+├── 🔐 .env.example               # Environment variable template
+├── 🚫 .gitignore                 # Git ignored files
+└── 📘 README.md                  # Project documentation
+g
 
 ---
 
