@@ -171,7 +171,7 @@ Project Structure:
 📁 Project Structure
 
 📦 taskhub-api/ — FastAPI backend with MongoDB, Redis & Celery
-
+```text
 taskhub-api/
 │
 ├── app/                          # Application Source Code
@@ -206,6 +206,7 @@ taskhub-api/
 ├── .env.example                  # Environment variable template
 ├── .gitignore                    # Git ignored files
 └── README.md                     # Project documentation
+```
 
 
 ---
