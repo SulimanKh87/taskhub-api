@@ -100,7 +100,7 @@ async def register_user(user: UserCreate):
 
     # Pass email + job_id to Celery
     celery_app.send_task(
-        "app.celery_app.send_welcome_email",
+        "taskhub.send_welcome_email",
         args=[new_user["username"], job_id],
     )
 
