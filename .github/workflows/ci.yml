@@ -78,4 +78,3 @@ jobs:
 
       - name: Run Tests
         run: pytest -v --disable-warnings
-b
