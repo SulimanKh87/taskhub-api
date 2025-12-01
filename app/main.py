@@ -26,7 +26,6 @@ async def shutdown_db():
         await close_mongo_connection()
 
 
-
 # ==========================
 # Middleware
 # ==========================
