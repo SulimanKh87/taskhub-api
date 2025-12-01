@@ -12,7 +12,7 @@ from fastapi import (
 from jose import jwt, JWTError  # For decoding and validating JWT tokens
 
 from app.config import settings  # Load app configuration
-from app.database import db  # MongoDB connection
+from app import database  # MongoDB connection module
 from app.schemas.task_schema import (
     TaskResponse,
     TaskCreate,
@@ -70,7 +70,7 @@ async def create_task(task: TaskCreate, token: str):
     }
 
     # Save to MongoDB
-    await db.tasks.insert_one(new_task)
+    await database.db.tasks.insert_one(new_task)
 
     # Return a Pydantic-validated response
     return TaskResponse(
@@ -89,7 +89,7 @@ async def get_tasks(token: str):
     username = await get_current_user(token)
 
     # Retrieve all tasks belonging to this user
-    cursor = db.tasks.find({"owner": username})
+    cursor = database.db.tasks.find({"owner": username})
     tasks = await cursor.to_list(length=100)  # Limit to 100 results
 
     # Convert raw MongoDB documents to TaskResponse models
@@ -116,7 +116,7 @@ async def delete_task(task_id: str, token: str):
     username = await get_current_user(token)
 
     # Delete only if the task belongs to this user
-    result = await db.tasks.delete_one({"_id": task_id, "owner": username})
+    result = await database.db.tasks.delete_one({"_id": task_id, "owner": username})
 
     # Handle not found or unauthorized attempts
     if result.deleted_count == 0:

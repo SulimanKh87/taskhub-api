@@ -19,7 +19,7 @@ from passlib.context import (
 )  # Provides password hashing and verification with bcrypt
 
 from app.config import settings  # Import global configuration (.env-loaded)
-from app.database import db  # MongoDB async client (Motor)
+from app import database  # MongoDB async client (Motor)
 from app.schemas.token_schema import Token
 
 # Pydantic schemas for validation
@@ -73,7 +73,7 @@ def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_min
 )
 async def register_user(user: UserCreate):
     # Check if the username already exists in MongoDB
-    existing = await db.users.find_one({"username": user.username})
+    existing = await database.db.users.find_one({"username": user.username})
     if existing:
         raise HTTPException(status_code=400, detail="Username already exists")
 
@@ -89,7 +89,7 @@ async def register_user(user: UserCreate):
     }
 
     # Insert user into MongoDB
-    await db.users.insert_one(new_user)
+    await database.db.users.insert_one(new_user)
 
     # ==========================
     # IDEMPOTENT BACKGROUND JOB
@@ -118,7 +118,7 @@ async def register_user(user: UserCreate):
 @router.post("/login", response_model=Token)
 async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
     # OAuth2PasswordRequestForm extracts username/password from form-data body
-    user = await db.users.find_one({"username": form_data.username})
+    user = await database.db.users.find_one({"username": form_data.username})
 
     # Check if user exists and password is valid
     if not user or not verify_password(form_data.password, user["hashed_password"]):
