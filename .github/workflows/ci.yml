@@ -12,6 +12,9 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    env:
+      ENV: test
+
     services:
       mongo:
         image: mongo:7

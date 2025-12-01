@@ -19,7 +19,10 @@ async def startup_db():
 
 @app.on_event("shutdown")
 async def shutdown_db():
-    await close_mongo_connection()
+    # Do NOT close DB during tests (GitHub CI)
+    if os.getenv("ENV") != "test":
+        await close_mongo_connection()
+
 
 
 # ==========================
