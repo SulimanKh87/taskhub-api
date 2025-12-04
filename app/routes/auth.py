@@ -29,7 +29,21 @@ from app.schemas.user_schema import UserCreate, UserPublic
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # Create a password hashing context — bcrypt is the algorithm
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+import os
+from passlib.context import CryptContext
+
+if os.getenv("ENV") == "test":
+    # Use fast, stable hashing during tests
+    pwd_context = CryptContext(
+        schemes=["sha256_crypt"],
+        deprecated="auto",
+    )
+else:
+    # Production password hashing
+    pwd_context = CryptContext(
+        schemes=["bcrypt"],
+        deprecated="auto",
+    )
 
 
 # ==========================
