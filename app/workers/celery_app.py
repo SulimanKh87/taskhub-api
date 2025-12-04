@@ -18,10 +18,22 @@ celery_app = Celery(
 # IMPORTANT: connect to Mongo when worker starts
 @celery_app.on_after_configure.connect
 def init_mongo_connection(sender, **kwargs):
+    """
+    Initialize Mongo inside Celery worker safely.
+    Handles cases where a loop already exists.
+    """
     import asyncio
 
-    asyncio.run(connect_to_mongo())
+    async def _init():
+        await connect_to_mongo()
 
+    try:g
+        # If Celery already has a running event loop (Redis backend)
+        loop = asyncio.get_running_loop()
+        loop.create_task(_init())   # schedule coroutine safely
+    except RuntimeError:
+        # No running loop: safe to call asyncio.run()
+        asyncio.run(_init())
 
 # ------------------------------------------------------------
 # Celery Configuration
