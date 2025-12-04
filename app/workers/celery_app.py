@@ -30,10 +30,11 @@ def init_mongo_connection(sender, **kwargs):
     try:
         # If Celery already has a running event loop (Redis backend)
         loop = asyncio.get_running_loop()
-        loop.create_task(_init())   # schedule coroutine safely
+        loop.create_task(_init())  # schedule coroutine safely
     except RuntimeError:
         # No running loop: safe to call asyncio.run()
         asyncio.run(_init())
+
 
 # ------------------------------------------------------------
 # Celery Configuration
