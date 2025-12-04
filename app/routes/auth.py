@@ -18,6 +18,8 @@ from passlib.context import (
     CryptContext,
 )  # Provides password hashing and verification with bcrypt
 
+from app.utils.security import hash_password, verify_password
+
 from app.config import settings  # Import global configuration (.env-loaded)
 from app import database  # MongoDB async client (Motor)
 from app.schemas.token_schema import Token
@@ -28,39 +30,10 @@ from app.schemas.user_schema import UserCreate, UserPublic
 # Create a router instance for all /auth routes
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-# Create a password hashing context — bcrypt is the algorithm
-import os
-from passlib.context import CryptContext
-
-if os.getenv("ENV") == "test":
-    # Use fast, stable hashing during tests
-    pwd_context = CryptContext(
-        schemes=["sha256_crypt"],
-        deprecated="auto",
-    )
-else:
-    # Production password hashing
-    pwd_context = CryptContext(
-        schemes=["bcrypt"],
-        deprecated="auto",
-    )
-
 
 # ==========================
 # Helper Functions
 # ==========================
-
-
-def hash_password(password: str) -> str:
-    """Securely hash a password."""
-    # Takes a plain password and returns a bcrypt hash
-    return pwd_context.hash(password)
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Compare plain password with hash."""
-    # Verifies that the plain text password matches the stored hash
-    return pwd_context.verify(plain_password, hashed_password)
 
 
 def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_minutes):
