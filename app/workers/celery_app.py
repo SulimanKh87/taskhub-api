@@ -90,4 +90,3 @@ def send_welcome_email(self, email: str, job_id: str):
     loop.run_until_complete(save_job_result(job_id, result))
 
     return result
-G
