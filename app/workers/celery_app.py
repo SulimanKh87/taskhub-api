@@ -14,7 +14,7 @@ celery_app = Celery(
 )
 
 # IMPORT tasks explicitly so Celery registers them
-celery_app.conf.imports = ("app.tasks",)
+celery_app.conf.imports = ("app.workers.celery_app",)
 
 # Update additional Celery configurations
 celery_app.conf.update(
