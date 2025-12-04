@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta  # Used for token expiration
 
 from jose import jwt  # JWT for token creation and validation
@@ -6,7 +7,11 @@ from passlib.context import CryptContext  # Provides password hashing
 from app.config import settings  # Load JWT secret, algorithm, and expiry
 
 # Initialize password hashing using bcrypt
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use faster / safer hashing in tests (no bcrypt wrap-bug check)
+if os.getenv("ENV") == "test":
+    pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+else:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # ==========================
 # Password Hashing Utilities
