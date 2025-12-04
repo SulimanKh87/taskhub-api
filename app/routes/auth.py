@@ -14,7 +14,7 @@ from fastapi.security import (
     OAuth2PasswordRequestForm,
 )  # Handles form-based login requests (username/password)
 from jose import jwt  # Library to encode/decode JWT tokens
-g
+
 from app.utils.security import hash_password, verify_password
 
 from app.config import settings  # Import global configuration (.env-loaded)
