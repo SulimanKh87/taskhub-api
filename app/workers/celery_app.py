@@ -13,6 +13,9 @@ celery_app = Celery(
     backend=settings.redis_broker,  # Redis also stores task results
 )
 
+# IMPORT tasks explicitly so Celery registers them
+celery_app.conf.imports = ("app.tasks",)
+
 # Update additional Celery configurations
 celery_app.conf.update(
     task_serializer="json",  # Serialize tasks in JSON format
@@ -27,7 +30,8 @@ celery_app.conf.update(
 # Define a background task
 # autoretry_for → retries on exception
 # retry_backoff=True → waits progressively longer between retries
-@celery_app.task(bind=True, autoretry_for=(Exception,), retry_backoff=True)
+@celery_app.task(bind=True, autoretry_for=(Exception,), retry_backoff=True,
+    name="taskhub.send_welcome_email",)
 def send_welcome_email(self, email: str, job_id: str):
     """
     Idempotent Celery email task.
