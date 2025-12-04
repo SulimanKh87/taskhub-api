@@ -42,7 +42,9 @@ def send_welcome_email(self, email: str, job_id: str):
     job_id must be UNIQUE for every logical email.
     """
 
-    loop = asyncio.get_event_loop()
+    # Celery worker threads DO NOT have an event loop -> must create one manuallyg
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
 
     # Step 1 — check if already processed
     existing = loop.run_until_complete(get_job_result(job_id))
