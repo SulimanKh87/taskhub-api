@@ -1,9 +1,15 @@
+import asyncio
+from datetime import datetime
+
 from celery import Celery
+
 from app.config import settings
 from app.database import connect_to_mongo
+from app.idempotency import get_job_result, mark_job_started, save_job_result
+
 
 # ------------------------------------------------------------
-# Create Celery Application
+# Celery Application Setup
 # ------------------------------------------------------------
 celery_app = Celery(
     "taskhub",
@@ -11,34 +17,9 @@ celery_app = Celery(
     backend=settings.redis_broker,
 )
 
+# Celery must import the tasks module to register tasks
+celery_app.conf.imports = ("app.workers.celery_tasks",)
 
-# ------------------------------------------------------------
-# Ensure MongoDB is connected in Celery worker process
-# ------------------------------------------------------------
-# IMPORTANT: connect to Mongo when worker starts
-@celery_app.on_after_configure.connect
-def init_mongo_connection(sender, **kwargs):
-    """
-    Initialize Mongo inside Celery worker safely.
-    Handles cases where a loop already exists.
-    """
-    import asyncio
-
-    async def _init():
-        await connect_to_mongo()
-
-    try:
-        # If Celery already has a running event loop (Redis backend)
-        loop = asyncio.get_running_loop()
-        loop.create_task(_init())  # schedule coroutine safely
-    except RuntimeError:
-        # No running loop: safe to call asyncio.run()
-        asyncio.run(_init())
-
-
-# ------------------------------------------------------------
-# Celery Configuration
-# ------------------------------------------------------------
 celery_app.conf.update(
     task_serializer="json",
     result_serializer="json",
@@ -48,9 +29,65 @@ celery_app.conf.update(
     worker_concurrency=2,
 )
 
+
 # ------------------------------------------------------------
-# Import REAL tasks module
+# Initialize MongoDB for Celery (SAFE)
 # ------------------------------------------------------------
-# IMPORTANT:
-# We now import the dedicated tasks file, NOT celery_app.py itself.
-celery_app.conf.imports = ("app.workers.tasks",)
+@celery_app.on_after_configure.connect
+def init_mongo_connection(sender, **kwargs):
+    """
+    Initialize MongoDB for Celery using a PRIVATE event loop.
+    We do NOT use Celery’s own event loop (Redis backend conflict).
+    This avoids 'RuntimeError: Event loop is closed'.
+    """
+
+    async def _init():
+        await connect_to_mongo()
+
+    # Use private loop ONLY for DB init
+    loop = asyncio.new_event_loop()
+    try:
+        loop.run_until_complete(_init())
+    finally:
+        loop.close()
+
+
+# ------------------------------------------------------------
+# Celery Task (Idempotent welcome email)
+# ------------------------------------------------------------
+@celery_app.task(
+    bind=True,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    name="taskhub.send_welcome_email",
+)
+def send_welcome_email(self, email: str, job_id: str):
+    """
+    Idempotent Celery task.
+    Uses its own fresh event loop per invocation.
+    """
+
+    # Each Celery worker thread needs its own loop
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Step 1 — check if already processed
+    existing = loop.run_until_complete(get_job_result(job_id))
+    if existing:
+        return existing["result"]
+
+    # Step 2 — mark as started
+    loop.run_until_complete(mark_job_started(job_id))
+
+    # Step 3 — main logic
+    result = {
+        "status": "sent",
+        "email": email,
+        "processed_at": datetime.utcnow().isoformat(),
+    }
+
+    # Step 4 — save result
+    loop.run_until_complete(save_job_result(job_id, result))
+
+    return result
+G
