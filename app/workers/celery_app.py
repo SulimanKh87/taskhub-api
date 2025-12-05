@@ -32,7 +32,7 @@ celery_app.conf.update(
 
 
 @worker_process_init.connect
-def init_celery_mongo(_):
+def init_celery_mongo(**_kwargs):
     """Ensure MongoDB is connected inside Celery worker processes."""
     import asyncio
 
