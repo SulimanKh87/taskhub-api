@@ -1,22 +1,19 @@
-import asyncio
-from datetime import datetime
+"""  celery_app.py should ONLY create Celery instance & import tasks. """
 
+# ------------------------------------------------------------
+# Celery Setup
+# ------------------------------------------------------------
 from celery import Celery
-
 from app.config import settings
-from app.idempotency import get_job_result, mark_job_started, save_job_result
 
-
-# ------------------------------------------------------------
-# Celery Application Setup
-# ------------------------------------------------------------
+# Create Celery app
 celery_app = Celery(
     "taskhub",
     broker=settings.redis_broker,
     backend=settings.redis_broker,
 )
 
-# Celery must import the tasks module to register tasks
+# Register tasks module
 celery_app.conf.imports = ("app.workers.tasks",)
 
 celery_app.conf.update(
@@ -28,48 +25,18 @@ celery_app.conf.update(
     worker_concurrency=2,
 )
 
-
 # ------------------------------------------------------------
-# Celery Task (Idempotent welcome email)
+# Import tasks so Celery registers them
 # ------------------------------------------------------------
-@celery_app.task(
-    bind=True,
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    name="taskhub.send_welcome_email",
-)
-def send_welcome_email(self, email: str, job_id: str):
-    """
-    Idempotent Celery task.
-    Uses its own fresh event loop per invocation.
-    """
-
-    # Each Celery worker thread needs its own loop
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Step 1 — check if already processed
-    existing = loop.run_until_complete(get_job_result(job_id))
-    if existing:
-        return existing["result"]
-
-    # Step 2 — mark as started
-    loop.run_until_complete(mark_job_started(job_id))
-
-    # Step 3 — main logic
-    result = {
-        "status": "sent",
-        "email": email,
-        "processed_at": datetime.utcnow().isoformat(),
-    }
-
-    # Step 4 — save result
-    loop.run_until_complete(save_job_result(job_id, result))
-
-    return result
-
-
-# ------------------------------------------------------------
-# Force task registration so Celery knows about our tasks
-# ------------------------------------------------------------
-from app.workers.tasks import send_welcome_email  # noqa: F401
+"""
+Why import at the BOTTOM?
+Because:
+Celery must finish initializing celery_app first
+THEN load tasks — otherwise circular import occurs
+Ruff allows # noqa: F401 meaning “unused import is intentional”
+A bottom import avoids:
+Circular dependencies
+Celery failing to discover tasks
+Python loading celery_app twice
+"""
+from app.workers.tasks import _send  # noqa: F401
