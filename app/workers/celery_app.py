@@ -1,4 +1,4 @@
-"""  celery_app.py should ONLY create Celery instance & import tasks. """
+"""celery_app.py should ONLY create Celery instance & import tasks."""
 
 # ------------------------------------------------------------
 # Celery Setup
@@ -26,18 +26,3 @@ celery_app.conf.update(
     enable_utc=True,
     worker_concurrency=2,
 )
-
-# ------------------------------------------------------------
-# Import tasks so Celery registers them
-# ------------------------------------------------------------
-"""
-Why import at the BOTTOM?
-Because:
-Celery must finish initializing celery_app first
-THEN load tasks — otherwise circular import occurs
-Ruff allows # noqa: F401 meaning “unused import is intentional”
-A bottom import avoids:
-Circular dependencies
-Celery failing to discover tasks
-Python loading celery_app twice
-"""
