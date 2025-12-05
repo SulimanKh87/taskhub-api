@@ -31,7 +31,6 @@ celery_app.conf.update(
 )
 
 
-
 @worker_process_init.connect
 def init_celery_mongo(_):
     """Ensure MongoDB is connected inside Celery worker processes."""
