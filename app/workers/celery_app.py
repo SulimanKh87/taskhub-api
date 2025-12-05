@@ -17,7 +17,7 @@ celery_app = Celery(
 )
 
 # Celery must import the tasks module to register tasks
-celery_app.conf.imports = ("app.workers.celery_tasks",)
+celery_app.conf.imports = ("app.workers.tasks",)
 
 celery_app.conf.update(
     task_serializer="json",
@@ -67,3 +67,9 @@ def send_welcome_email(self, email: str, job_id: str):
     loop.run_until_complete(save_job_result(job_id, result))
 
     return result
+
+
+# ------------------------------------------------------------
+# Force task registration so Celery knows about our tasks
+# ------------------------------------------------------------
+from app.workers.tasks import send_welcome_email  # noqa: F401
