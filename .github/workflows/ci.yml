@@ -72,12 +72,13 @@ jobs:
         run: ruff check .
 
       - name: Start Celery Worker
-        env:
-          REDIS_BROKER: redis://localhost:6379/0g
         run: |
           echo "Starting Celery worker..."
-          nohup celery -A app.workers.celery_app.celery_app worker --loglevel=info &
+          celery -A app.workers.celery_app.celery_app worker --loglevel=INFO &
           sleep 5
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+      
 
       - name: Run Tests
         run: pytest -v --disable-warnings
