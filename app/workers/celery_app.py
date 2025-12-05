@@ -1,4 +1,5 @@
 """  celery_app.py should ONLY create Celery instance & import tasks. """
+from app.workers.tasks import _send g
 
 # ------------------------------------------------------------
 # Celery Setup
@@ -39,4 +40,3 @@ Circular dependencies
 Celery failing to discover tasks
 Python loading celery_app twice
 """
-from app.workers.tasks import _send  # noqa: F401
