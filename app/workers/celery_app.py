@@ -31,28 +31,6 @@ celery_app.conf.update(
 
 
 # ------------------------------------------------------------
-# Initialize MongoDB for Celery (SAFE)
-# ------------------------------------------------------------
-@celery_app.on_after_configure.connect
-def init_mongo_connection(sender, **kwargs):
-    """
-    Initialize MongoDB for Celery using a PRIVATE event loop.
-    We do NOT use Celery’s own event loop (Redis backend conflict).
-    This avoids 'RuntimeError: Event loop is closed'.
-    """
-
-    async def _init():
-        await connect_to_mongo()
-
-    # Use private loop ONLY for DB init
-    loop = asyncio.new_event_loop()
-    try:
-        loop.run_until_complete(_init())
-    finally:
-        loop.close()
-
-
-# ------------------------------------------------------------
 # Celery Task (Idempotent welcome email)
 # ------------------------------------------------------------
 @celery_app.task(

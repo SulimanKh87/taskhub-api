@@ -11,13 +11,6 @@ from app.workers.celery_app import celery_app
     retry_backoff=True,
     name="taskhub.send_welcome_email",
 )
-def send_welcome_email(self, email: str, job_id: str):
-    """
-    Run the async code using asyncio.run(), safe for Celery worker threads.
-    """
-    return asyncio.run(_send(email, job_id))
-
-
 async def _send(email: str, job_id: str):
     # Step 1 — idempotency check
     existing = await get_job_result(job_id)
