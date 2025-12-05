@@ -4,7 +4,6 @@ from datetime import datetime
 from celery import Celery
 
 from app.config import settings
-from app.database import connect_to_mongo
 from app.idempotency import get_job_result, mark_job_started, save_job_result
 
 
