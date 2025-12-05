@@ -1,12 +1,12 @@
 """  celery_app.py should ONLY create Celery instance & import tasks. """
 
-from app.workers.tasks import _send  # noqa: F401
-
 # ------------------------------------------------------------
 # Celery Setup
 # ------------------------------------------------------------
 from celery import Celery
+
 from app.config import settings
+from app.workers.tasks import _send  # noqa: F401
 
 # Create Celery app
 celery_app = Celery(
