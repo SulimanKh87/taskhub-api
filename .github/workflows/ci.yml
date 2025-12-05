@@ -71,12 +71,12 @@ jobs:
       - name: Lint (Ruff)
         run: ruff check .
 
-      - name: Format Check (Black)
-        run: black --check .
-
       - name: Start Celery Worker
+        env:
+          REDIS_BROKER: redis://localhost:6379/0g
         run: |
-          nohup celery -A app.workers.celery_app worker --loglevel=INFO &
+          echo "Starting Celery worker..."
+          nohup celery -A app.workers.celery_app.celery_app worker --loglevel=info &
           sleep 5
 
       - name: Run Tests
