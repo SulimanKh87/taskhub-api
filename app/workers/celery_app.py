@@ -6,7 +6,6 @@
 from celery import Celery
 
 from app.config import settings
-from app.workers.tasks import _send  # noqa: F401
 
 # Create Celery app
 celery_app = Celery(
