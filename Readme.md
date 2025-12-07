@@ -58,7 +58,7 @@ This ensures:
 - Email sending and heavy operations are retry-safe
 - Mongo-backed `job_log` prevents duplicate executions
 
-A new file `workers/idempotency.py` manages job state using:
+A new file `app/idempotency.py` manages job state using:
 
 - job_id  
 - status (in_progress / completed)  
@@ -179,10 +179,8 @@ taskhub-api/
 │   ├── main.py                   # FastAPI entrypoint (routes, middleware)
 │   ├── config.py                 # Global settings via pydantic-settings
 │   ├── database.py               # MongoDB async client (Motor)
-│   ├── celery_app.py             # Celery worker configuration
-│   ├── tasks.py                  # Background jobs (Celery tasks)
 │   ├── security.py               # Password hashing + JWT helpers
-│   │
+│   ├── idempotency.py            # Mongo-backed job_log + idempotent helpers
 │   ├── routes/                   # API Route Modules
 │   │   ├── auth.py               # User registration + login
 │   │   └── tasks.py              # Task CRUD, JWT-protected
@@ -191,6 +189,12 @@ taskhub-api/
 │   │   ├── user_schema.py        # User create/login/public models
 │   │   ├── task_schema.py        # Task create/response schemas
 │   │   └── token_schema.py       # JWT token models
+│   │
+│   ├── workers/               # Celery Worker + Background Jobs
+│   │   ├── celery_app.py
+│   │   └── tasks/             # Celery task modules
+│   │       ├── __init__.py
+│   │       └── email_tasks.py # send_welcome_email, email notifications, etc.
 │   │
 │   ├── models/                   # MongoDB Document Models (Pydantic)
 │   │   ├── user_model.py
@@ -436,7 +440,7 @@ ReDoc → http://localhost:8000/redoc
 
 ### 🔄 Idempotent Background Jobs (NEW)
 - Added Mongo-backed `job_log` to prevent duplicate background job execution  
-- Implemented idempotent layer in `workers/idempotency.py`  
+- Implemented idempotent layer in `app/idempotency.py`  
 - Updated Celery tasks to check for previous results before running  
 - Ensures email tasks and future workloads run **exactly once**, even under retries  
 - Production-safe behavior for distributed workers  

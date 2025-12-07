@@ -6,7 +6,7 @@ from httpx import AsyncClient
 from app.database import connect_to_mongo, close_mongo_connection  # DB handling
 from app import database
 from app.main import app  # FastAPI instance
-from app.workers.celery_app import celery_app  # Celery worker instance
+from app.workers import celery_app  # Celery worker instance
 
 
 @pytest.mark.asyncio

@@ -2,7 +2,7 @@
 
 import uuid  # Used to generate unique user IDs
 from datetime import datetime, timedelta  # Used to manage token expiration times
-from app.workers.celery_app import celery_app
+from app.workers import celery_app
 
 from fastapi import (
     APIRouter,

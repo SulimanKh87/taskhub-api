@@ -1,8 +1,7 @@
-from datetime import datetime
 import asyncio
+from datetime import datetime
 
 from app.workers.celery_app import celery_app
-from app.idempotency import get_job_result, mark_job_started, save_job_result
 
 
 @celery_app.task(
@@ -12,9 +11,24 @@ from app.idempotency import get_job_result, mark_job_started, save_job_result
     name="taskhub.send_welcome_email",
 )
 def send_welcome_email(self, email: str, job_id: str):
-    """Celery cannot run async tasks, so we run async code inside sync task."""
+    """
+    Idempotent Celery welcome email task.
+    Runs async DB checks inside a synchronous Celery worker.
+    """
 
-    loop = asyncio.get_event_loop()
+    # Local import prevents circular import with celery_app
+    from app.idempotency import (
+        get_job_result,
+        mark_job_started,
+        save_job_result,
+    )
+
+    # Get or create event loop (Celery workers are synchronous)
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
 
     # Step 1 — idempotency check
     existing = loop.run_until_complete(get_job_result(job_id))
@@ -24,7 +38,7 @@ def send_welcome_email(self, email: str, job_id: str):
     # Step 2 — mark started
     loop.run_until_complete(mark_job_started(job_id))
 
-    # Step 3 — real logic
+    # Step 3 — actual logic
     result = {
         "status": "sent",
         "email": email,
