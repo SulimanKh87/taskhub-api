@@ -2,7 +2,7 @@
 
 import uuid  # Used to generate unique user IDs
 from datetime import datetime, timedelta  # Used to manage token expiration times
-from app.workers import celery_app
+from app.workers.celery_app import celery_app
 
 from fastapi import (
     APIRouter,
@@ -84,7 +84,7 @@ async def register_user(user: UserCreate):
 
     # Pass email + job_id to Celery
     celery_app.send_task(
-        "taskhub.send_welcome_email",
+        "tasksg.send_welcome_email",
         args=[new_user["username"], job_id],
     )
 
