@@ -191,9 +191,9 @@ taskhub-api/
 │   │   └── token_schema.py       # JWT token models
 │   │
 │   ├── workers/               # Celery Worker + Background Jobs
-│   │   ├── celery_app.py
+│   │   ├── celery_app.gpy
+│   │   ├── __init__.py
 │   │   └── tasks/             # Celery task modules
-│   │       ├── __init__.py
 │   │       └── email_tasks.py # send_welcome_email, email notifications, etc.
 │   │
 │   ├── models/                   # MongoDB Document Models (Pydantic)
