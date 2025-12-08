@@ -19,7 +19,9 @@ celery_app = Celery(
 )
 
 # Register tasks module
-celery_app.conf.imports = ("app.workers.tasks",)
+celery_app.conf.imports = (
+    "app.workers.tasks.email_tasks",
+)
 
 celery_app.conf.update(
     task_serializer="json",
