@@ -2,7 +2,7 @@
 ![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
 
 ```markdown
-> **Version:** 1.2.0 — Idempotent Background Jobs + Distributed CI
+> **Version:** 1.3.0 — TaskHub API v1.3.0 – stable CI + idempotent Celery tasks
 > **Release Date:** Dec 2025
 ```
 
@@ -394,24 +394,6 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     await close_mongo_connection()
-
-✅ Ensures
-database
-connections
-open
-only
-when
-the
-app
-starts
-✅ Cleanly
-closes
-all
-connections
-when
-the
-container
-stops
 ```
 
 🌐 API Documentation
