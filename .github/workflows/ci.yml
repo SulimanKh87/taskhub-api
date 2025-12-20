@@ -1,19 +1,21 @@
-name: TaskHub CI
+name: CI - TaskHub API
 
 on:
   push:
-    branches: B\\\\\\\\
   pull_request:
-    branches:
 
 jobs:
   test:
     name: Lint + Test (FastAPI + MongoDB + Redis + Celery)
     runs-on: ubuntu-latest
 
-    # ------------------------------------------------------------------
+    env:
+      ENV: test
+      PYTHONPATH: .
+
+    # --------------------------------------------------------------
     # Required external services (REAL services, not mocks)
-    # ------------------------------------------------------------------
+    # --------------------------------------------------------------
     services:
       mongo:
         image: mongo:7
@@ -35,41 +37,17 @@ jobs:
           --health-timeout=5s
           --health-retries=5
 
-    # ------------------------------------------------------------------
-    # Environment variables (match production behavior, test-safe)
-    # ------------------------------------------------------------------
-    env:
-      ENV: test
-      PYTHONPATH: .
-
-      # MongoDB
-      MONGODB_URI: mongodb://localhost:27017/taskhub_test
-
-      # Redis / Celery
-      REDIS_URL: redis://localhost:6379/0
-      CELERY_BROKER_URL: redis://localhost:6379/0
-      CELERY_RESULT_BACKEND: redis://localhost:6379/0
-
-      # JWT
-      JWT_SECRET: ci_test_secret
-      JWT_ALGORITHM: HS256
-      JWT_EXPIRE_MINUTES: 60
-      JWT_REFRESH_DAYS: 7
-
-    # ------------------------------------------------------------------
-    # CI execution steps
-    # ------------------------------------------------------------------
     steps:
       # --------------------------------------------------------------
       # Checkout source code
       # --------------------------------------------------------------
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       # --------------------------------------------------------------
       # Python setup
       # --------------------------------------------------------------
-      - name: Set up Python
+      - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -81,20 +59,36 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+          pip install black ruff
 
       # --------------------------------------------------------------
-      # Static analysis (fast fail)
+      # Create test environment (.env)
       # --------------------------------------------------------------
-      - name: Ruff lint
+      - name: Create test .env
         run: |
-          ruff check .
+          echo "app_name=taskhub-api" >> .env
+          echo "app_env=test" >> .env
+          echo "app_debug=false" >> .env
+          echo "app_port=8000" >> .env
+          echo "mongodb_uri=mongodb://localhost:27017" >> .env
+          echo "mongodb_db=test_db" >> .env
+          echo "jwt_secret=test_secret_key" >> .env
+          echo "jwt_algorithm=HS256" >> .env
+          echo "jwt_expire_minutes=30" >> .env
+          echo "jwt_refresh_days=1" >> .env
+          echo "redis_broker=redis://localhost:6379/0" >> .env
+
+      # --------------------------------------------------------------
+      # Static analysis
+      # --------------------------------------------------------------
+      - name: Lint (Ruff)
+        run: ruff check .
 
       # --------------------------------------------------------------
       # Formatting enforcement
       # --------------------------------------------------------------
       - name: Black format check
-        run: |
-          black --check .
+        run: black --check .
 
       # --------------------------------------------------------------
       # Start Celery worker (required for idempotency tests)
@@ -104,12 +98,10 @@ jobs:
           celery -A app.workers.celery_app.celery_app worker \
             --loglevel=info \
             --pool=solo &
-        env:
-          ENV: test
+          sleep 5
 
       # --------------------------------------------------------------
-      # Run full test suite
+      # Run tests (includes pagination + auth + idempotency)
       # --------------------------------------------------------------
-      - name: Run pytest
-        run: |
-          pytest -v --disable-warnings
+      - name: Run tests
+        run: pytest -v --disable-warnings
