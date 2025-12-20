@@ -143,6 +143,21 @@ CI is intentionally configured to be deterministic:
 - Celery runs in a single-process mode
 This ensures stable and reproducible test runs.
 
+## CI Pipeline
+
+This project uses **GitHub Actions** to validate correctness, reliability, and scalability on every push and pull request.
+
+The CI pipeline performs the following stepgs:
+
+- Starts **MongoDB (v7)** and **Redis (v7)** using Docker
+- Waits for service health checks before running tests
+- Installs dependencies with Python 3.12
+- Runs **Ruff** for linting
+- Runs **Black** in check mode
+- Starts a **Celery worker** (Redis broker)
+- Executes full test suite with **pytest**
+
+All tests must pass before changes are accepted.
 ### ✔ What CI Runs Automatically
 
 | **Step**   | **Tool**  | **Purpose**                             |
