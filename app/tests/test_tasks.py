@@ -51,17 +51,20 @@ async def test_task_crud_and_pagination():
         assert res.status_code == 200
         page1 = res.json()
         assert len(page1) == 2
+        assert page1["meta"]["has_more"] is True
 
         # --- Page 2 ---
         res = await client.get("/tasks/?limit=2&skip=2", headers=headers)
         assert res.status_code == 200
         page2 = res.json()
         assert len(page2) == 2
+        assert page2["meta"]["has_more"] is True
 
         # --- Page 3 ---
         res = await client.get("/tasks/?limit=2&skip=4", headers=headers)
         assert res.status_code == 200
         page3 = res.json()
         assert len(page3) == 1
+        assert page1["meta"]["has_more"] is True
 
     await close_mongo_connection()

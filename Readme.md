@@ -12,8 +12,10 @@
 A modern, containerized backend for task management with user authentication,
 async background jobs, and MongoDB persistence — built using FastAPI, Motor, Celery, and Redis.
 
-# TaskHub API
+It is designed to demonstrate **production-grade backend practices** including
+clean API contracts, scalable data access patterns, and full CI coverage.
 
+# TaskHub API
 is an async backend service for managing users and tasks.  
 It demonstrates:
 
@@ -52,23 +54,59 @@ Pytest / HTTPX
 JWT (python-jose)
 bcrypt
 
-## 📈 Scalability Improvements (NEW) 
-After stabilizing the core system, TaskHub was enhanced to support scale.
+## 📈 Scalability Improvements → Pagination (NEW)
+Idempotency is enforced for **Celery background jobs only** and does not apply to HTTP API endpoints.
 
-### Pagination
-Task listing endpoints support offset-based pagination:
+After stabilizing the core system, TaskHub was enhanced to support scale
+through a formalized pagination API contract.
+
+### Pagination (API Contract)
+The `/tasks` endpoint returns a structured pagination response
+using a typed pagination contract (`Page[T]`).
+
+⚠️ **Breaking change:**  
+The `/tasks` endpoint no longer returns a raw list.  
+It now returns a pagination object containing `items` and `meta`.
+
+The pagination response schema is defined in `app/schemas/pagination_schema.py` as `Page[T]`.
+
+**Endpoint**
+```http
 GET /tasks?limit=20&skip=0
-- `limit`: number of tasks returned (1–100)
-- `skip`: offset into the result set
-- Results are deterministically ordered by `created_at DESC`
+```
+# Query Parameters
+limit – number of tasks per page (1–100)
+skip – offset into the result set
 
-This prevents large responses and keeps performance predictable as data grows.
+Response Shape
+{
+  "items": [
+    {
+      "id": "uuid",
+      "title": "Task title",
+      "description": "Task description",
+      "owner": "username",
+      "created_at": "2025-01-01T12:00:00Z"
+    }
+  ],
+  "meta": {
+    "limit": 20,
+    "has_more": true,
+    "next_cursor": null
+  }
+}
 
-### Indexing
+# Notes
+Results are ordered by created_at DESC
+has_more indicates whether additional pages exist
+Response is forward-compatible with cursor-based pagination
+
+# Indexing
 To support pagination at scale, TaskHub creates a MongoDB compound index on startup:
 tasks(owner ASC, created_at DESC)
-This index matches the query pattern used by `/tasks` and prevents collection scans.
 
+
+This index matches the /tasks query pattern and prevents collection scans.
 ---------------------------------
 
 ## 🔄 Idempotent Background Jobs (NEW)
@@ -100,6 +138,10 @@ TaskHub API now includes a complete CI pipeline powered by GitHub Actions.
 CI runs on every push and pull request across all branches, ensuring pagination,
 indexing, and API contract changes do not regress.
 
+CI is intentionally configured to be deterministic:
+- Fixed test secrets are used
+- Celery runs in a single-process mode
+This ensures stable and reproducible test runs.
 
 ### ✔ What CI Runs Automatically
 
@@ -442,6 +484,9 @@ ReDoc → http://localhost:8000/redoc
 ## 🧾 Recent Updates (vNext)
 
 ```markdown 
+
+## ⚠️ Breaking Changes
+- The `/tasks` endpoint response format changed from a raw list to a paginated response (`items + meta`).
 
 ### 📈 Scale Readiness Improvementsg
 - Added offset-based pagination to task listing

@@ -21,6 +21,8 @@ from fastapi import (
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt, JWTError
 
+from app.schemas.pagination_schema import Page, PageMeta
+
 from app.config import settings
 from app import database
 from app.schemas.task_schema import TaskCreate, TaskResponse
@@ -98,7 +100,7 @@ async def create_task(
 # -------------------------------------------------------------------
 # List tasks (paginated)
 # -------------------------------------------------------------------
-@router.get("/", response_model=List[TaskResponse])
+@router.get("/", response_model=Page[TaskResponse])
 async def get_tasks(
     username: str = Depends(get_current_user),
     limit: int = Query(20, ge=1, le=100),
@@ -119,7 +121,7 @@ async def get_tasks(
 
     tasks = await cursor.to_list(length=limit)
 
-    return [
+    items = [
         TaskResponse(
             id=t["_id"],
             title=t["title"],
@@ -129,6 +131,17 @@ async def get_tasks(
         )
         for t in tasks
     ]
+
+    has_more = len(items) == limit
+
+    return Page(
+        items=items,
+        meta=PageMeta(
+            limit=limit,
+            has_more=has_more,
+            next_cursor=None,  # offset pagination for now
+        ),
+    )
 
 
 # -------------------------------------------------------------------
