@@ -1,38 +1,58 @@
-# app/database.py
+"""
+MongoDB connection management and index initialization.
+
+This module:
+- Manages the Motor client lifecycle
+- Ensures required indexes exist on startup
+"""
 
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.config import settings
 
-# Globals to store client and db instance
+# Global Mongo client and DB reference
 client: AsyncIOMotorClient | None = None
 db = None
 
 
+async def ensure_indexes():
+    """
+    Ensure MongoDB indexes required for scalable queries.
+
+    Indexes are created idempotently and are safe to run on every startup.
+    """
+    # Supports task pagination by owner and creation time
+    await db.tasks.create_index([("owner", 1), ("created_at", -1)])
+
+
 async def connect_to_mongo(force: bool = False):
     """
-    Connect to MongoDB or reconnect if the client was closed.
-    This prevents CI tests from failing due to a dead MongoClient.
+    Establish MongoDB connection.
+
+    Reuses existing client if alive unless forced to reconnect.
     """
     global client, db
 
-    # If a client already exists and we are not forcing a reconnect,
-    # check if the client is still alive.
     if client is not None and not force:
         try:
-            await client.admin.command("ping")  # Check if alive
-            return  # Client is alive, no need to reconnect
+            await client.admin.command("ping")
+            return
         except Exception:
-            pass  # Client is dead → reconnect
+            pass
 
-    # Create a brand new client
     client = AsyncIOMotorClient(settings.mongodb_uri)
     db = client[settings.mongodb_db]
+
+    # Ensure DB indexes on startup
+    await ensure_indexes()
+
     print("✅ MongoDB connected successfully.")
 
 
 async def close_mongo_connection():
-    """Close MongoDB connection on FastAPI shutdown."""
+    """
+    Close MongoDB connection on application shutdown.
+    """
     global client
     if client:
         client.close()
