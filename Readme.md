@@ -2,7 +2,8 @@
 ![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
 
 ```markdown
-> **Version:** 1.3.0 — TaskHub API v1.3.0 – stable CI + idempotent Celery tasks
+> **Version:** 1.4.0  
+> **Status:** Stable core + scalable API contracts  
 > **Release Date:** Dec 2025
 ```
 
@@ -33,6 +34,11 @@ It demonstrates:
 - Health check endpoint for monitoring
 - GitHub Actions CI (linting, testing, distributed service testing)
 - Idempotent background jobs using Celery (NEW)
+- Offset-based pagination for task listing (`limit` / `skip`)
+- MongoDB compound indexes aligned with query patterns
+- Authorization header–based JWT enforcement (no query/body tokens)
+- Full CI coverage with real MongoDB, Redis, and Celery worker
+
 
 
 🧱 Tech Stack
@@ -45,6 +51,25 @@ Pydantic v2
 Pytest / HTTPX
 JWT (python-jose)
 bcrypt
+
+## 📈 Scalability Improvements (NEW) 
+After stabilizing the core system, TaskHub was enhanced to support scale.
+
+### Pagination
+Task listing endpoints support offset-based pagination:
+GET /tasks?limit=20&skip=0
+- `limit`: number of tasks returned (1–100)
+- `skip`: offset into the result set
+- Results are deterministically ordered by `created_at DESC`
+
+This prevents large responses and keeps performance predictable as data grows.
+
+### Indexing
+To support pagination at scale, TaskHub creates a MongoDB compound index on startup:
+tasks(owner ASC, created_at DESC)
+This index matches the query pattern used by `/tasks` and prevents collection scans.
+
+---------------------------------
 
 ## 🔄 Idempotent Background Jobs (NEW)
 
@@ -71,6 +96,10 @@ Before a task runs, Celery checks if the job was already completed and returns t
 ## 🔍 Continuous Integration & Code Quality (NEW)
 
 TaskHub API now includes a complete CI pipeline powered by GitHub Actions.
+
+CI runs on every push and pull request across all branches, ensuring pagination,
+indexing, and API contract changes do not regress.
+
 
 ### ✔ What CI Runs Automatically
 
@@ -188,6 +217,7 @@ taskhub-api/
 │   ├── schemas/                  # Pydantic Request/Response Schemas
 │   │   ├── user_schema.py        # User create/login/public models
 │   │   ├── task_schema.py        # Task create/response schemas
+│   │   ├── pagination_schema.py   # Pagination contracts 
 │   │   └── token_schema.py       # JWT token models
 │   │
 │   ├── workers/               # Celery Worker + Background Jobs
@@ -202,6 +232,7 @@ taskhub-api/
 │   │
 │   └── tests/                    # Automated Test Suite
 │       ├── test_api.py           # Health check & API tests
+│       ├── test_tasks.py           # Task CRUD + pagination tests 
 │       └── test_idempotency.py   # Idempotent job execution tests
 │
 ├── docker-compose.yml            # Orchestration (API + MongoDB + Redis + Celery)
@@ -338,6 +369,13 @@ app/tests/test_api.py::test_health_check PASSED
 🧠 Testing Notes (Updated)
 TaskHub API uses Pytest together with Ruff (linting), Black (formatting), and GitHub Actions CI.
 
+### ✔ Test Coverage Details (NEW)
+Tests also verify:
+- JWT authorization via `Authorization: Bearer <token>` header
+- Paginated task listing using `limit` and `skip` query parameters
+- Stable ordering of paginated results (`created_at DESC`)
+
+
 CI automatically runs:
 ruff check .
 black --check .
@@ -404,6 +442,14 @@ ReDoc → http://localhost:8000/redoc
 ## 🧾 Recent Updates (vNext)
 
 ```markdown 
+
+### 📈 Scale Readiness Improvementsg
+- Added offset-based pagination to task listing
+- Added MongoDB compound index for owner-based queries
+- Enforced Authorization header JWT contracts
+- Added integration tests covering pagination and authentication
+
+
 ### 🔧 CI & Code Quality Enhancements
 - Added full GitHub Actions CI workflow
 - Integrated Ruff linting (static analysis)
