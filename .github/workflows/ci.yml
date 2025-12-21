@@ -50,6 +50,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install black ruff
+      - name: Format Check (Black)
+        run: black --check .
 
       - name: Add project root to PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
@@ -81,4 +83,4 @@ jobs:
 
 
       - name: Run Tests
-        run: pytest -v --disable-warningsg
+        run: pytest -v --disable-warnings
