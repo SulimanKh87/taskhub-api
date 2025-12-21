@@ -2,7 +2,7 @@
 ![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
 
 ```markdown
-> **Version:** 1.4.0  
+> **Version:** 1.5.0  
 > **Status:** Stable core + scalable API contracts  
 > **Release Date:** Dec 2025
 ```
@@ -11,7 +11,7 @@
 
 A modern, containerized backend for task management with user authentication,
 async background jobs, and MongoDB persistence — built using FastAPI, Motor, Celery, and Redis.
-
+s
 It is designed to demonstrate **production-grade backend practices** including
 clean API contracts, scalable data access patterns, and full CI coverage.
 
@@ -333,7 +333,8 @@ taskhub-api/
 │   │
 │   └── tests/                    # Automated Test Suite
 │       ├── test_api.py           # Health check & API tests
-│       ├── test_tasks.py           # Task CRUD + pagination tests 
+│       ├── test_tasks.py         # Task CRUD + pagination tests 
+│       ├── test_indexes.py       # Verifies MongoDB indexes are created on startup (performance & scalability)    
 │       └── test_idempotency.py   # Idempotent job execution tests
 │
 ├── docker-compose.yml            # Orchestration (API + MongoDB + Redis + Celery)
