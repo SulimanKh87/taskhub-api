@@ -37,7 +37,8 @@ It demonstrates:
 - GitHub Actions CI (linting, testing, distributed service testing)
 - Idempotent background jobs using Celery (NEW)
 - Offset-based pagination for task listing (`limit` / `skip`)
-- MongoDB compound indexes aligned with query patterns
+- MongoDB compound indexes created automatically on startup 
+  (compound + unique indexes aligned with query patterns)
 - Authorization header–based JWT enforcement (no query/body tokens)
 - Full CI coverage with real MongoDB, Redis, and Celery worker
 
@@ -108,6 +109,46 @@ tasks(owner ASC, created_at DESC)
 
 This index matches the /tasks query pattern and prevents collection scans.
 ---------------------------------
+
+## 🗄️ Database Indexing (NEW)
+To support scalability and prevent collection scans, TaskHub creates
+MongoDB indexes automatically during application startup.
+
+Indexes are defined programmatically in `app/database.py`
+and are created idempotently (safe on every restart).
+
+### Indexes Created
+
+#### Tasks Collection
+```text
+(owner ASC, created_at DESC)
+
+#Used by:
+Paginated task listing
+Owner
+Stable sorting by creation time
+
+# Matches query pattern:
+db.tasks.find({ "owner": username })
+        .sort("created_at", -1)
+
+Users Collection
+(username UNIQUE)
+
+
+#Used by:
+User registration (uniqueness enforcement)
+Login (fast username lookup)
+Job Log Collection
+(job_id UNIQUE)
+
+
+# Used by:
+Idempotent Celery background jobs
+Safe retries and worker restarts
+
+---------------------------------
+
 
 ## 🔄 Idempotent Background Jobs (NEW)
 
@@ -187,6 +228,9 @@ This allows end-to-end testing of:
 - `ruff check .`
 - `black --check .`
 - `pytest -v`
+
+CI also validates database initialization logic by asserting that
+required MongoDB indexes exist before queries are executed.
 
 CI status badge is displayed at the top of the README.
 
@@ -431,7 +475,9 @@ Tests also verify:
 - JWT authorization via `Authorization: Bearer <token>` header
 - Paginated task listing using `limit` and `skip` query parameters
 - Stable ordering of paginated results (`created_at DESC`)
-
+- Verifies MongoDB indexes are created on startup (`test_indexes.py`)
+- Ensures pagination returns a typed `Page[T]` response
+- Confirms correct `has_more` behavior across pages
 
 CI automatically runs:
 ruff check .
@@ -503,12 +549,11 @@ ReDoc → http://localhost:8000/redoc
 ## ⚠️ Breaking Changes
 - The `/tasks` endpoint response format changed from a raw list to a paginated response (`items + meta`).
 
-### 📈 Scale Readiness Improvementsg
+### 📈 Scale Readiness Improvements
 - Added offset-based pagination to task listing
-- Added MongoDB compound index for owner-based queries
-- Enforced Authorization header JWT contracts
-- Added integration tests covering pagination and authentication
-
+- Added MongoDB index initialization on application startup
+- Implemented compound and unique indexes aligned with query patterns
+- Added integration tests covering pagination, indexing, and authentication
 
 ### 🔧 CI & Code Quality Enhancements
 - Added full GitHub Actions CI workflow
