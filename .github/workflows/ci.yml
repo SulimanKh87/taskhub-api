@@ -14,8 +14,13 @@ jobs:
 
     env:
       ENV: test
+      # Branch-aware backend selection
+      BACKEND: ${{ startsWith(github.ref, 'refs/heads/feature/sql') && 'postgres' || 'mongo' }}
 
     services:
+      # ----------------------------
+      # MongoDB (v1.5 - main branch)
+      # ----------------------------
       mongo:
         image: mongo:7
         ports:
@@ -25,7 +30,29 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
+        if: env.BACKEND == 'mongo'
 
+      # ----------------------------
+      # PostgreSQL (v2.0 - SQL branches)
+      # ----------------------------
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: taskhub
+          POSTGRES_PASSWORD: taskhub
+          POSTGRES_DB: taskhub
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U taskhub"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        if: env.BACKEND == 'postgres'
+
+      # ----------------------------
+      # Redis (shared)
+      # ----------------------------
       redis:
         image: redis:7
         ports:
@@ -45,42 +72,65 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install black ruff
-      - name: Format Check (Black)
+
+      - name: Format check (Black)
         run: black --check .
 
       - name: Add project root to PYTHONPATH
         run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
 
+      # ----------------------------
+      # Environment configuration
+      # ----------------------------
       - name: Create test .env
         run: |
           echo "app_name=taskhub-api" >> .env
           echo "app_env=test" >> .env
           echo "app_debug=false" >> .env
           echo "app_port=8000" >> .env
-          echo "mongodb_uri=mongodb://localhost:27017" >> .env
-          echo "mongodb_db=test_db" >> .env
           echo "jwt_secret=ci_test_secret_key" >> .env
           echo "jwt_algorithm=HS256" >> .env
           echo "jwt_expire_minutes=30" >> .env
           echo "jwt_refresh_days=1" >> .env
           echo "redis_broker=redis://localhost:6379/0" >> .env
 
+          if [ "$BACKEND" = "mongo" ]; then
+            echo "mongodb_uri=mongodb://localhost:27017" >> .env
+            echo "mongodb_db=test_db" >> .env
+          else
+            echo "database_url=postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub" >> .env
+          fi
+
+      - name: Show backend mode
+        run: echo "🧪 Running CI with BACKEND=$BACKEND"
+
       - name: Lint (Ruff)
         run: ruff check .
 
-      - name: Start Celery Worker
+      # ----------------------------
+      # Celery worker (shared)
+      # ----------------------------
+      - name: Start Celery worker
         run: |
-          echo "Starting Celery worker..."
-          celery -A app.workers.celery_app.celery_app worker --loglevel=INFO --pool=solo &
+          celery -A app.workers.celery_app.celery_app worker \
+            --loglevel=INFO \
+            --pool=solo &
           sleep 5
         env:
           PYTHONPATH: ${{ github.workspace }}
 
-
-      - name: Run Tests
-        run: pytest -v --disable-warnings
+      # ----------------------------
+      # Tests (strict separation)
+      # ----------------------------
+      - name: Run tests
+        run: |
+          if [ "$BACKEND" = "mongo" ]; then
+            pytest -v app/tests_mongo --disable-warnings
+          else
+            pytest -v app/tests --disable-warnings
+          fi
