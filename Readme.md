@@ -49,7 +49,8 @@ The goal of this project is to demonstrate real backend engineering, not just CR
 - Database schema migrations with Alembic
 - Clean separation between API, domain, and persistence layers
 
-🧱 System Architecture
+## 🧱 System Architecture
+```text
 Client
   │
   ▼
@@ -65,8 +66,11 @@ FastAPI (async)
   │
   └── Celery Workers
         └── idempotent background tasks
+```
 
+```md
 🗂 Project Structure
+```text
 taskhub-api/
 │
 ├── app/
@@ -113,6 +117,7 @@ taskhub-api/
 ├── requirements.txt
 ├── .env.example
 └── README.md
+```
 
 🛠 Tech Stack
 # Backend
