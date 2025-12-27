@@ -1,121 +1,125 @@
-# Handles user authentication (register + login) using JWT and bcrypt
+# app/routes/auth.py
+# Handles user authentication (register + login) using JWT and SQLAlchemy
 
-import uuid  # Used to generate unique user IDs
-from datetime import datetime, timedelta  # Used to manage token expiration times
-from app.workers.celery_app import celery_app
+import uuid
+from datetime import datetime, timedelta
 
 from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
     status,
-)  # FastAPI utilities for routing, dependency injection, and HTTP errors
-from fastapi.security import (
-    OAuth2PasswordRequestForm,
-)  # Handles form-based login requests (username/password)
-from jose import jwt  # Library to encode/decode JWT tokens
+)
+from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.utils.security import hash_password, verify_password
-
-from app.config import settings  # Import global configuration (.env-loaded)
-from app import database  # MongoDB async client (Motor)
+from app.config import settings
+from app.db import get_db
+from app.models.user import User
 from app.schemas.token_schema import Token
-
-# Pydantic schemas for validation
 from app.schemas.user_schema import UserCreate, UserPublic
+from app.utils.security import hash_password, verify_password
+from app.workers.celery_app import celery_app
 
-# Create a router instance for all /auth routes
+
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-# ==========================
-# Helper Functions
-# ==========================
-
-
-def create_access_token(data: dict, expires_delta: int = settings.jwt_expire_minutes):
-    """Generate JWT token."""
-    # Creates a JSON Web Token (JWT) with an expiration time
+# ------------------------------------------------------------
+# Helper: create JWT token
+# ------------------------------------------------------------
+def create_access_token(
+    data: dict,
+    expires_delta: int = settings.jwt_expire_minutes,
+):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(
-        minutes=expires_delta
-    )  # Expiration timestamp
-    to_encode.update({"exp": expire})  # Add expiry claim to payload
-    encoded_jwt = jwt.encode(
-        to_encode, settings.jwt_secret, algorithm=settings.jwt_algorithm
+    expire = datetime.utcnow() + timedelta(minutes=expires_delta)
+    to_encode.update({"exp": expire})
+    return jwt.encode(
+        to_encode,
+        settings.jwt_secret,
+        algorithm=settings.jwt_algorithm,
     )
-    return encoded_jwt
 
 
-# ==========================
-# Register New User
-# ==========================
-
-
+# ------------------------------------------------------------
+# Register
+# ------------------------------------------------------------
 @router.post(
-    "/register", response_model=UserPublic, status_code=status.HTTP_201_CREATED
+    "/register",
+    response_model=UserPublic,
+    status_code=status.HTTP_201_CREATED,
 )
-async def register_user(user: UserCreate):
-    # Check if the username already exists in MongoDB
-    existing = await database.db.users.find_one({"username": user.username})
-    if existing:
-        raise HTTPException(status_code=400, detail="Username already exists")
+async def register_user(
+    user: UserCreate,
+    db: AsyncSession = Depends(get_db),
+):
+    new_user = User(
+        id=str(uuid.uuid4()),
+        username=user.username,
+        hashed_password=hash_password(user.password),
+        created_at=datetime.utcnow(),
+    )
 
-    # Hash the password before saving it
-    hashed_pw = hash_password(user.password)
+    db.add(new_user)
 
-    # Create the user document
-    new_user = {
-        "_id": str(uuid.uuid4()),  # Generate unique ID
-        "username": user.username,
-        "hashed_password": hashed_pw,
-        "created_at": datetime.utcnow(),  # Record creation timestamp
-    }
+    try:
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Username already exists",
+        )
 
-    # Insert user into MongoDB
-    await database.db.users.insert_one(new_user)
+    # --------------------------------------------------------
+    # Idempotent welcome email
+    # --------------------------------------------------------
+    job_id = f"welcome_email:{new_user.id}"
 
-    # ==========================
-    # IDEMPOTENT BACKGROUND JOB
-    # ==========================
-
-    # Unique idempotency key for this logical email
-    job_id = f"welcome_email:{new_user['_id']}"
-
-    # Pass email + job_id to Celery
     celery_app.send_task(
-        "tasksg.send_welcome_email",
-        args=[new_user["username"], job_id],
+        "tasks.send_welcome_email",
+        args=[new_user.username, job_id],
     )
 
-    # Return public user info (excluding password)
     return UserPublic(
-        id=new_user["_id"], username=user.username, created_at=new_user["created_at"]
+        id=new_user.id,
+        username=new_user.username,
+        created_at=new_user.created_at,
     )
 
 
-# ==========================
-# Login and Get Token
-# ==========================
-
-
+# ------------------------------------------------------------
+# Login
+# ------------------------------------------------------------
 @router.post("/login", response_model=Token)
-async def login_user(form_data: OAuth2PasswordRequestForm = Depends()):
-    # OAuth2PasswordRequestForm extracts username/password from form-data body
-    user = await database.db.users.find_one({"username": form_data.username})
+async def login_user(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: AsyncSession = Depends(get_db),
+):
+    stmt = select(User).where(User.username == form_data.username)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
 
-    # Check if user exists and password is valid
-    if not user or not verify_password(form_data.password, user["hashed_password"]):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+    if not user or not verify_password(
+        form_data.password,
+        user.hashed_password,
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password",
+        )
 
-    # Generate access token (short-lived)
-    access_token = create_access_token(data={"sub": user["username"]})
-
-    # Generate refresh token (longer expiration)
+    access_token = create_access_token({"sub": user.username})
     refresh_token = create_access_token(
-        data={"sub": user["username"]},
-        expires_delta=settings.jwt_refresh_days * 1440,  # convert days → minutes
+        {"sub": user.username},
+        expires_delta=settings.jwt_refresh_days * 1440,
     )
 
-    # Return both tokens to the client
-    return Token(access_token=access_token, refresh_token=refresh_token)
+    return Token(
+        access_token=access_token,
+        refresh_token=refresh_token,
+    )

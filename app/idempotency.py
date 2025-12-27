@@ -1,39 +1,80 @@
 from datetime import datetime
 
-from app.database import db
+from sqlalchemy import select, insert, update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.job_log import JobLog
 
 
-async def get_job_result(job_id: str):
-    """Return the saved job result if the job is already completed."""
-    return await db.job_log.find_one({"job_id": job_id, "status": "completed"})
+# ============================================================
+# Idempotent Job Helpers (PostgreSQL)
+# ============================================================
 
+async def get_job_result(
+    session: AsyncSession,
+    job_id: str,
+):
+    """
+    Return the saved job result if the job was already completed.
 
-async def mark_job_started(job_id: str):
-    """Mark a job as started in an idempotent way (insert only once)."""
-    await db.job_log.update_one(
-        {"job_id": job_id},
-        {
-            "$setOnInsert": {
-                "job_id": job_id,
-                "status": "in_progress",
-                "created_at": datetime.utcnow(),
-            }
-        },
-        upsert=True,
+    Used by Celery tasks to short-circuit duplicate executions.
+    """
+    stmt = select(JobLog).where(
+        JobLog.job_id == job_id,
+        JobLog.status == "completed",
     )
 
+    result = await session.execute(stmt)
+    job = result.scalar_one_or_none()
 
-async def save_job_result(job_id: str, result: dict):
-    """Save job result and mark job as completed."""
-    await db.job_log.update_one(
-        {"job_id": job_id},
-        {
-            "$set": {
-                "status": "completed",
-                "result": result,
-                "updated_at": datetime.utcnow(),
-            },
-            "$setOnInsert": {"created_at": datetime.utcnow()},
-        },
-        upsert=True,
+    return job.result if job else None
+
+
+async def mark_job_started(
+    session: AsyncSession,
+    job_id: str,
+):
+    """
+    Mark a job as started in an idempotent way.
+
+    This uses PostgreSQL's ON CONFLICT DO NOTHING to guarantee:
+    - Only one row per job_id
+    - Safe retries
+    - No duplicate executions
+    """
+    stmt = (
+        insert(JobLog)
+        .values(
+            job_id=job_id,
+            status="in_progress",
+            created_at=datetime.utcnow(),
+        )
+        .on_conflict_do_nothing(index_elements=["job_id"])
     )
+
+    await session.execute(stmt)
+    await session.commit()
+
+
+async def save_job_result(
+    session: AsyncSession,
+    job_id: str,
+    result: dict,
+):
+    """
+    Save job result and mark job as completed.
+
+    This updates the existing job_log row created during mark_job_started().
+    """
+    stmt = (
+        update(JobLog)
+        .where(JobLog.job_id == job_id)
+        .values(
+            status="completed",
+            result=result,
+            updated_at=datetime.utcnow(),
+        )
+    )
+
+    await session.execute(stmt)
+    await session.commit()

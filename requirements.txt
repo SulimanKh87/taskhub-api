@@ -1,17 +1,44 @@
-# Lists all dependencies needed to run the project
-
+# =========================
+# Core Web Framework
+# =========================
 fastapi==0.120.0                 # Web framework
-pydantic==2.12.3                 # Data validation models
-motor==3.6.0                     # Async MongoDB driver
-uvicorn[standard]==0.38.0        # ASGI server to run FastAPI
+uvicorn[standard]==0.38.0        # ASGI server
+
+# =========================
+# Data Validation & Config
+# =========================
+pydantic==2.12.3                 # Request/response models
+pydantic-settings==2.6.1         # Settings management via .env
+
+# =========================
+# Database (PostgreSQL)
+# =========================
+SQLAlchemy==2.0.30               # Async ORM (core of SQL version)
+asyncpg==0.29.0                  # Async PostgreSQL driver
+alembic==1.13.2                  # Database migrations
+
+# =========================
+# Authentication & Security
+# =========================
 python-jose==3.5.0               # JWT encoding/decoding
 passlib[bcrypt]==1.7.4           # Password hashing
-email-validator==2.3.0           # Validates email formats
+python-multipart==0.0.9          # OAuth2 form parsing
+
+# =========================
+# Background Jobs
+# =========================
+celery==5.4.0                    # Distributed task queue
+redis==5.0.4                     # Redis broker / result backend
+
+# =========================
+# Testing
+# =========================
 pytest==8.3.3                    # Test runner
 pytest-asyncio==0.23.6           # Async test support
-httpx==0.27.2                    # HTTP client for tests
-celery==5.4.0                    # Background task queue
-redis==5.0.4                     # Message broker for Celery
-python-dotenv==1.1.1             # Load environment variables from .env
-pydantic-settings==2.6.1         # Configuration management with Pydantic
-python-multipart==0.0.9          # For form-data parsing (used by OAuth2)
+httpx==0.27.2                    # HTTP client for API tests
+
+# =========================
+# Utilities
+# =========================
+python-dotenv==1.1.1             # Load environment variables locally
+email-validator==2.3.0           # Email validation (UserCreate schema)

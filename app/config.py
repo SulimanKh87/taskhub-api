@@ -1,32 +1,39 @@
 # app/config.py
-from pydantic_settings import BaseSettings, SettingsConfigDict
 
-# BaseSettings automatically loads values from environment variables or .env files
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # === Application Metadata ===
-    app_name: str  # e.g., "TaskHub API"
-    app_env: str  # e.g., "development", "production"
-    app_debug: bool  # Enables debug mode for FastAPI
-    app_port: int  # API port number (e.g., 8000)
+    # ------------------------------------------------------------
+    # Application Metadata
+    # ------------------------------------------------------------
+    app_name: str
+    app_env: str
+    app_debug: bool
+    app_port: int
 
-    # === MongoDB Configuration ===
-    mongodb_uri: str  # Full MongoDB connection URI
-    mongodb_db: str  # Database name
+    # ------------------------------------------------------------
+    # Database (PostgreSQL)
+    # ------------------------------------------------------------
+    database_url: str  # postgresql+asyncpg://user:pass@host:5432/db
 
-    # === JWT Configuration ===
-    jwt_secret: str  # Secret key for signing JWTs
-    jwt_algorithm: str  # Algorithm (e.g., HS256)
-    jwt_expire_minutes: int  # Access token expiry (minutes)
-    jwt_refresh_days: int  # Refresh token expiry (days)
+    # ------------------------------------------------------------
+    # JWT Configuration
+    # ------------------------------------------------------------
+    jwt_secret: str
+    jwt_algorithm: str
+    jwt_expire_minutes: int
+    jwt_refresh_days: int
 
-    # === Redis / Celery Configuration ===
-    redis_broker: str  # Redis URL for Celery tasks
+    # ------------------------------------------------------------
+    # Redis / Celery
+    # ------------------------------------------------------------
+    redis_broker: str
 
-    # Load settings from `.env` and ignore extras not defined here
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        extra="ignore",
+    )
 
 
-# Instantiate global settings object
 settings = Settings()
