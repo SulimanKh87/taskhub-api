@@ -1,5 +1,4 @@
 # app/tests/conftest.py
-
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,6 +14,10 @@ async def db_session() -> AsyncSession:
     guaranteeing a clean database state.
     """
     async with async_session() as session:
-        async with session.begin():
+        tx = await session.begin()
+        try:
             yield session
-            await session.rollback()
+        finally:
+            # Always rollback, even if the test fails mid-way
+            if tx.is_active:
+                await tx.rollback()
