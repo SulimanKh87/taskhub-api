@@ -26,20 +26,16 @@ The goal is to demonstrate **how a real backend system is designed, deployed, sc
 
 The system is designed in **layers**, not just services:
 
-Client
-↓
-Edge / Routing
-↓
-API Layer
-↓
-Async / Event Layer
-↓
-Data Layer
-↓
-Search Layer
-↓
-Observability
+```mermaid
+flowchart TD
+  Client --> Edge
+  Edge --> API
+  API --> Async
+  Async --> Data
+  Data --> Search
+  API --> Observability
 
+```
 
 Each AWS service exists for **one clear reason**.
 
@@ -125,7 +121,7 @@ Used for:
 - Exactly-once execution (idempotency)
 
 Flow:
-API → Celery Task → Redis → Worker
+API →  Celery Task →  Redis →  Worker
 
 
 Characteristics:
@@ -207,7 +203,7 @@ PostgreSQL = source of truth
 Elasticsearch = derived, optimized view
 
 Indexing flow:
-DB Change → Async Event → Indexer → Elasticsearch
+DB Change →  Async Event → Indexer → Elasticsearch
 
 
 Query flow:
