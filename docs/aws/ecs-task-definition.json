@@ -1,0 +1,29 @@
+i want to add here the following:
+
+Shows ECS + Fargate knowledge
+
+Shows env vars vs secrets separation
+
+Shows health checks
+
+Shows CloudWatch logging
+
+No Terraform required yet
+
+This alone is enough to say:
+
+“I’ve deployed containerized FastAPI apps on AWS ECS.”
+
+✅ Final checklist (commit-ready)
+
+You now have:
+
+docs/
+├── ARCHITECTURE.md
+├── FAILURE_MODES.md
+├── SCALING.md
+├── TERRAFORM_ALIGNMENT.md
+├── DEPLOYMENT.md        ✅
+├── SECURITY.md          ✅
+└── aws/
+    └── ecs-task-definition.json  ✅
