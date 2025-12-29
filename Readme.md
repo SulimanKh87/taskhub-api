@@ -12,8 +12,6 @@
 > **Release Type:** Storage-layer migration (MongoDB → PostgreSQL)
 
 📚 Overview
-TaskHub API is a production-style backend service for user and task management, built with FastAPI, PostgreSQL, Celery, and Redis.
-
 **TaskHub API** is a production-style backend service for user and task management, built with **FastAPI**, **PostgreSQL**, **Celery**, and **Redis**.
 
 This version (**v2.0**) is a full migration from MongoDB to PostgreSQL.  
@@ -26,15 +24,20 @@ The project is designed to demonstrate **real backend engineering practices**, i
 - Deterministic CI with real services
 
 # This version (v2.0) is a full migration from MongoDB to PostgreSQL, preserving:
-API contracts
-Pagination behavior
-Authentication flow
-Idempotent background jobs
-while introducing:
-Schema enforcement
-Relational integrity
-Alembic migrations
-SQL-level guarantees
+### v2.0 Migration Summary
+
+This version preserves:
+- API contracts
+- Pagination behavior
+- Authentication flow
+- Idempotent background jobs
+
+While introducing:
+- Schema enforcement
+- Relational integrity
+- Alembic migrations
+- SQL-level guarantees
+- 
 The goal of this project is to demonstrate real backend engineering, not just CRUD functionality.
 
 ## 🎯 Key Features
@@ -67,7 +70,29 @@ FastAPI (async)
   └── Celery Workers
         └── idempotent background tasks
 ```
+## 📐 Architecture & Cloud Design (Mid-Level)
 
+This project includes explicit documentation describing how the system is
+designed, deployed, scaled, and secured in a production-style AWS environment.
+
+These documents reflect **mid-level backend engineering expectations** and
+focus on clarity, correctness, and real-world tradeoffs.
+
+### 📄 Documentation
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Layered backend architecture (API, async, data)
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Local → Docker → AWS ECS deployment flow
+- [`docs/SECURITY.md`](docs/SECURITY.md) — JWT auth, password hashing, secrets handling
+- [`docs/SCALING.md`](docs/SCALING.md) — Horizontal scaling strategy and bottlenecks
+- [`docs/FAILURE_MODES.md`](docs/FAILURE_MODES.md) — Failure scenarios and recovery behavior
+- [`docs/TERRAFORM_ALIGNMENT.md`](docs/TERRAFORM_ALIGNMENT.md) — AWS resource mapping (IaC-aligned)
+
+### ☁️ AWS Proof of Deployment Knowledge
+- [`docs/aws/ecs-task-definition.json`](docs/aws/ecs-task-definition.json) — Example ECS Fargate task definition with:
+  - Environment variable injection
+  - AWS-managed secrets
+  - Health checks
+  - CloudWatch logging
+  
 ```md
 🗂 Project Structure
 ```text
@@ -111,6 +136,16 @@ taskhub-api/
 │   ├── env.py
 │   └── versions/
 │       └── 0001_init_schema.py
+│
+├── docs/               
+│   ├── ARCHITECTURE.md
+│   ├── DEPLOYMENT.md
+│   ├── SECURITY.md
+│   ├── FAILURE_MODES.md
+│   ├── SCALING.md
+│   ├── TERRAFORM_ALIGNMENT.md
+│   └── aws/
+│       └── ecs-task-definition.json
 │
 ├── docker-compose.yml
 ├── Dockerfile
