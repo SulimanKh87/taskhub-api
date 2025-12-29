@@ -1,153 +1,69 @@
-# 🔐 Security Overview — TaskHub API (Mid-Level)
+# 🔐 Security Overview
 
-This document describes the **security design decisions** of the TaskHub API.
+This document summarizes the **application-level security model** of TaskHub API.
 
-The goal is to demonstrate **safe, production-aligned backend practices**
-without unnecessary complexity.
-
----
-
-## 🎯 Security Philosophy
-
-- Secure by default
-- Explicit authentication and authorization
-- No secrets in source code
-- Configuration over hardcoding
-- Defense through simplicity
-
-This project focuses on **application-layer security**, not infrastructure hardening.
+The focus is on **correctness, simplicity, and production-aligned defaults**.
 
 ---
 
-## 1️⃣ Authentication Strategy (JWT)
+## 1️⃣ Authentication (JWT)
 
-TaskHub uses **JSON Web Tokens (JWT)** for authentication.
+- JWT-based authentication
+- Short-lived access tokens
+- Long-lived refresh tokens
+- Tokens sent via `Authorization: Bearer`
 
-### Token Types
-- **Access Token**
-  - Short-lived
-  - Sent with every authenticated request
-- **Refresh Token**
-  - Longer-lived
-  - Used to obtain new access tokens
-
-### Token Transport
-- Sent via `Authorization` header
-- Format:  
-Authorization: Bearer <token>
-
-yaml
-Copy code
-
-### Token Contents
-- `sub` — authenticated username
-- `exp` — expiration timestamp
-
-### Validation Rules
 Every protected request validates:
 - Token signature
 - Token expiration
-- User existence in the database
+- User existence
 
-Invalid or expired tokens result in `401 Unauthorized`.
+Invalid tokens return `401 Unauthorized`.
 
 ---
 
 ## 2️⃣ Authorization
 
-Authorization is enforced at the API layer.
-
-Rules:
 - Users can only access their own resources
-- Ownership checks are performed in every protected endpoint
-- No client-side trust is assumed
-
-Example:
-- A task can only be deleted by its owner
-- Requests with valid tokens but invalid ownership are rejected
+- Ownership checks enforced server-side
+- No client-side trust
 
 ---
 
 ## 3️⃣ Password Handling
 
-Passwords are **never stored or transmitted in plaintext**.
+- Passwords are never stored in plaintext
+- `bcrypt` used in production
+- Faster hashing used in tests for CI performance
 
-### Hashing Strategy
-- `bcrypt` is used in production
-- A faster hashing algorithm is used in test environments to speed up CI
-
-### Rules
-- Passwords are hashed during registration
-- Hashes are verified during login
-- Hashed passwords are never returned in API responses
-
-The system never exposes:
-- Plain passwords
-- Password hashes
-- Credential metadata
+Passwords are:
+- Hashed on registration
+- Verified on login
+- Never returned in responses
 
 ---
 
 ## 4️⃣ Secrets Management
 
-Sensitive configuration includes:
-- Database connection URL
-- JWT signing secret
-- Redis broker URL
+Sensitive values include:
+- Database URL
+- JWT secret
+- Redis connection URL
 
-### Rules
-- Secrets are injected via environment variables
-- `.env.example` documents required variables
-- `.env` files are excluded from version control
-- No secrets are hardcoded in source code
-
-### Environments
-- Local: `.env`
-- CI: GitHub Actions secrets
-- AWS: ECS task definition / parameter store
-
----
-
-## 5️⃣ Transport & Network Safety
-
-- HTTPS is assumed in production environments
-- TLS termination occurs at the load balancer
-- Internal service communication uses private networking
-
-The application does not implement custom TLS logic.
-
----
-
-## 6️⃣ Dependency & Runtime Safety
-
-- Dependencies are pinned via `requirements.txt`
-- No dynamic dependency loading at runtime
-- Security-sensitive logic is isolated in dedicated modules
-
-The project avoids:
-- Runtime code execution
-- Dynamic imports based on user input
-
----
-
-## 7️⃣ Repository Safety
-
-The repository enforces:
-- `.gitignore` for environment files
-- No credentials in commits
-- Clear separation between code and configuration
-
-All secrets must be supplied **at runtime**, never at build time.
+Rules:
+- Supplied via environment variables
+- Documented in `.env.example`
+- Never committed to Git
+- Never baked into images
 
 ---
 
 ## 🎯 Summary
 
 This security model ensures:
-- Proper authentication and authorization
-- Safe password handling
-- Secure secret management
-- Clean separation of concerns
+- Safe authentication
+- Proper authorization
+- Secure credential handling
+- Clear separation between code and secrets
 
-The approach reflects **real-world mid-level backend security practices**
-without introducing unnecessary complexity.
+It reflects **real-world mid-level backend security practices** without unnecessary complexity.

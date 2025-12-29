@@ -23,7 +23,6 @@ The project is designed to demonstrate **real backend engineering practices**, i
 - Exactly-once background job execution
 - Deterministic CI with real services
 
-# This version (v2.0) is a full migration from MongoDB to PostgreSQL, preserving:
 ### v2.0 Migration Summary
 
 This version preserves:
@@ -37,7 +36,7 @@ While introducing:
 - Relational integrity
 - Alembic migrations
 - SQL-level guarantees
-- 
+
 The goal of this project is to demonstrate real backend engineering, not just CRUD functionality.
 
 ## 🎯 Key Features
@@ -70,30 +69,19 @@ FastAPI (async)
   └── Celery Workers
         └── idempotent background tasks
 ```
-## 📐 Architecture & Cloud Design (Mid-Level)
+📐 Architecture & Operational Guarantees (Current State)
 
-This project includes explicit documentation describing how the system is
-designed, deployed, scaled, and secured in a production-style AWS environment.
+This project documents **only the systems and guarantees that currently exist**.
 
-These documents reflect **mid-level backend engineering expectations** and
-focus on clarity, correctness, and real-world tradeoffs.
+### 📄 Core Documentation
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Current system architecture and data flow
+- [`docs/FAILURE_MODES.md`](docs/FAILURE_MODES.md) — How the system fails and recovers
+- [`docs/SECURITY.md`](docs/SECURITY.md) — Authentication, authorization, and secret handling
 
-### 📄 Documentation
-- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — Layered backend architecture (API, async, data)
-- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Local → Docker → AWS ECS deployment flow
-- [`docs/SECURITY.md`](docs/SECURITY.md) — JWT auth, password hashing, secrets handling
-- [`docs/SCALING.md`](docs/SCALING.md) — Horizontal scaling strategy and bottlenecks
-- [`docs/FAILURE_MODES.md`](docs/FAILURE_MODES.md) — Failure scenarios and recovery behavior
-- [`docs/TERRAFORM_ALIGNMENT.md`](docs/TERRAFORM_ALIGNMENT.md) — AWS resource mapping (IaC-aligned)
+These documents focus on **correctness, failure isolation, and predictable behavior**
+rather than hypothetical infrastructure or future deployment plans.
 
-### ☁️ AWS Proof of Deployment Knowledge
-- [`docs/aws/ecs-task-definition.json`](docs/aws/ecs-task-definition.json) — Example ECS Fargate task definition with:
-  - Environment variable injection
-  - AWS-managed secrets
-  - Health checks
-  - CloudWatch logging
-  
-```md
+
 🗂 Project Structure
 ```text
 taskhub-api/
@@ -139,13 +127,8 @@ taskhub-api/
 │
 ├── docs/               
 │   ├── ARCHITECTURE.md
-│   ├── DEPLOYMENT.md
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
-│   ├── SCALING.md
-│   ├── TERRAFORM_ALIGNMENT.md
-│   └── aws/
-│       └── ecs-task-definition.json
 │
 ├── docker-compose.yml
 ├── Dockerfile

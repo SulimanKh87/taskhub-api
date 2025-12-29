@@ -1,298 +1,265 @@
-# 🧱 TaskHub Architecture — Cloud-Native Backend (Mid-Level)
-This document explains the **architecture of TaskHub API** in a **layered, text-based format**, focusing on **clarity, production realism, and backend engineering principles**.
+# 🧱 TaskHub API — System Architecture
 
-The goal is to demonstrate **how a real backend system is designed, deployed, scaled, and operated on AWS**, without overengineering.
+This document describes the **current architecture** of TaskHub API as it exists today.
 
-> **Note:**  
-> This document describes the **target cloud-native architecture** of TaskHub.
-> The current implementation runs locally using Docker Compose, while the AWS
-> components (ECS, RDS, ElastiCache, SQS) are being introduced incrementally.
+The focus is on **clarity, correctness, and production realism**, not future or hypothetical infrastructure.
 
 ---
 
 ## 🎯 Design Goals
 
-- Cloud-native, production-ready backend
+- Stateless, scalable API
 - Clear separation of responsibilities
-- Stateless APIs with scalable infrastructure
 - Strong data consistency guarantees
-- Asynchronous processing for reliability
-- Observable and debuggable in production
-- Incremental path toward microservices
+- Async processing for reliability
+- Predictable behavior under failure
 
 ---
 
-## 🧠 High-Level Mental Model
+## 🧠 High-Level Overview
 
-The system is designed in **layers**, not just services:
-
-```mermaid
-flowchart TD
-  Client --> Edge
-  Edge --> API
-  API --> Async
-  Async --> Data
-  Data --> Search
-  API --> Observability
-
+```text
+Client
+  ↓
+FastAPI (Async)
+  ↓
+PostgreSQL (Primary Data Store)
+  ↓
+Redis / Celery (Async Jobs)
 ```
+Each component exists for one clear responsibility.
 
-Each AWS service exists for **one clear reason**.
+1️⃣ API Layer (FastAPI)
 
----
-
-## 1️⃣ Client Layer
-
-**Who talks to the system**
-
-Examples:
-- Web frontend
-- Mobile app
-- API clients
-- External integrations (webhooks)
+Role: Synchronous request handling
 
 Responsibilities:
-- Send HTTP requests
-- Authenticate using JWT
-- Receive stable, predictable API responses
 
-Clients **never know** how many services exist internally.
+Authentication (JWT)
 
----
+Request validation (Pydantic)
 
-## 2️⃣ Edge & Routing Layer
+Business logic
 
-**How traffic enters AWS**
+Database reads and writes
 
-Components:
-- Application Load Balancer (ALB)
-- HTTPS (TLS termination)
-- Route 53 (DNS)
-
-Responsibilities:
-- Terminate HTTPS
-- Distribute traffic across containers
-- Enable horizontal scaling
-- Act as the single public entry point
-
-Flow:
-Client → HTTPS → Load Balancer
-
-Clients never communicate directly with containers.
-
----
-
-## 3️⃣ API Layer (FastAPI)
-
-**Primary synchronous backend service**
-
-Deployment:
-- Dockerized FastAPI application
-- Runs as stateless containers on ECS (Fargate)
-
-Responsibilities:
-- Authentication (JWT)
-- Request validation (Pydantic)
-- Business logic
-- Database reads/writes
-- Emitting async events
-
-Non-responsibilities:
-- Long-running tasks
-- Blocking I/O
-- Background processing
-
-Stateless rule:
-> Any request can be handled by any container instance.
-
----
-
-## 4️⃣ Async & Event Layer
-
-This layer enables **scalability, reliability, and decoupling**.
-
-### 4.1 Celery + Redis (Task-Based Async)
-
-Used for:
-- Emails
-- ETL jobs
-- Background processing
-- Retryable tasks
-- Exactly-once execution (idempotency)
-
-Flow:
-API →  Celery Task →  Redis →  Worker
-
+Emitting background jobs
 
 Characteristics:
-- Strong retry control
-- Internal job execution
-- SQL-backed idempotency
 
----
+Stateless
 
-### 4.2 SQS (Event-Based Messaging)
+Horizontally scalable
 
-Used for:
-- Decoupling services
-- Event-driven workflows
-- Fan-out patterns
-- Durable async messaging
+Safe to restart at any time
 
-Flow:
-API → SQS Queue → Consumer
+Rule:
 
+Any request can be served by any API instance.
 
-Distinction:
-- Celery = internal job execution
-- SQS = system-to-system communication
+2️⃣ Data Layer (PostgreSQL)
 
----
-
-## 5️⃣ Data Layer
-
-### 5.1 PostgreSQL (RDS)
-
-**Single source of truth**
+Role: Single source of truth
 
 Stores:
-- Users
-- Tasks
-- Job logs (idempotency)
-- Relational data
+
+Users
+
+Tasks
+
+Job execution records (idempotency)
 
 Characteristics:
-- ACID transactions
-- Foreign keys
-- Schema enforcement
-- Indexed queries
-- Strong consistency
+
+ACID transactions
+
+Explicit schema enforcement
+
+Query-aligned indexes
+
+Relational integrity
 
 Rule:
-> If data conflicts exist, PostgreSQL always wins.
 
----
+If data conflicts exist, PostgreSQL always wins.
 
-### 5.2 Redis (ElastiCache / Local Redis)
+3️⃣ Async Processing (Celery + Redis)
 
-**Ephemeral data store**
+Role: Background and non-blocking work
 
 Used for:
-- Celery broker
-- Rate limiting
-- Caching
-- Temporary state
 
-Not used for:
-- Business-critical persistence
-- Source of truth
+Emails
 
----
+Retryable jobs
 
-## 6️⃣ Search Layer (Elasticsearch)
+Long-running or failure-prone tasks
 
-**Optimized read model**
+Guarantees:
 
-Purpose:
-- Full-text search
-- Fast querying
-- Flexible filtering
+Tasks are retryable
 
-Pattern:
-PostgreSQL = source of truth
-Elasticsearch = derived, optimized view
+Idempotency is enforced at the database level
 
-Indexing flow:
-DB Change →  Async Event → Indexer → Elasticsearch
+No duplicate execution across retries
 
+Redis is used for:
 
-Query flow:
-Client → API → Elasticsearch
+Task brokering
 
-Failure rule:
-> If Elasticsearch is unavailable, the system remains functional.
+Temporary state
 
----
+Redis is not a source of truth.
 
-## 7️⃣ Microservices Strategy
+4️⃣ Containerization
 
-TaskHub uses **controlled microservices**, not fragmentation.
+The application is containerized using Docker.
 
-Logical services:
-taskhub-api → HTTP API
-taskhub-worker → Background jobs
-taskhub-search → Search indexing
+Same image used locally and in CI
 
-Characteristics:
-- Separate deployments
-- Shared repository
-- Shared CI/CD
-- Independent scaling
+No environment-specific logic in code
 
-Principle:
-> One service = one clear responsibility
+All configuration injected via environment variables
+
+🎯 Summary
+
+This architecture emphasizes:
+
+Explicit data ownership
+
+Failure isolation
+
+Predictable behavior
+
+Production-aligned simplicity
+
+It is intentionally minimal and suitable for mid-level to entry-senior backend systems.
+
 
 ---
 
-## 8️⃣ Observability & Operations
+# 💥 `docs/FAILURE_MODES.md` (FINAL VERSION)
 
-Visibility is mandatory in production.
+```md
+# 💥 Failure Modes & Recovery
 
-Implemented:
-- Structured JSON logs
-- Request IDs (correlation)
-- CloudWatch logging
-- Health endpoints
+This document describes **how TaskHub API fails**, **what the impact is**, and **how the system recovers**.
 
-Optional extensions:
-- Prometheus metrics
-- Latency and error dashboards
-- Alerting policies
+Failures are expected. Correct systems **handle them predictably**.
+```
+---
+
+## 🎯 Design Philosophy
+
+- Failures are inevitable
+- Data correctness is never compromised
+- Failures degrade functionality, not integrity
+- Recovery is automated where possible
+
+---
+
+## 1️⃣ API Process Failure
+
+**What fails**
+- API container crash
+- Memory or CPU exhaustion
+
+**Impact**
+- Temporary loss of capacity
+- No data loss
+
+**Why it’s safe**
+- API is stateless
+- Requests can be retried
+
+**Recovery**
+- Process restart
+- Traffic routed to healthy instances
+
+---
+
+## 2️⃣ Background Worker Failure
+
+**What fails**
+- Worker crashes mid-task
+- Task timeout or exception
+
+**Impact**
+- Delayed background work
+- No duplicate execution
+
+**Why it’s safe**
+- Tasks are retryable
+- Idempotency enforced via PostgreSQL
+
+**Recovery**
+- Automatic retry
+- Job state stored in DB
+
+---
+
+## 3️⃣ PostgreSQL Failure
+
+**What fails**
+- Temporary DB unavailability
+- Connection errors
+
+**Impact**
+- API requests fail fast
+- Writes are blocked
+
+**Why it’s safe**
+- ACID guarantees
+- No partial writes
+
+**Recovery**
+- Application retries
+- Service resumes when DB is available
 
 Rule:
-> If you cannot observe it, you cannot operate it.
+> If PostgreSQL is unavailable, the system is degraded but consistent.
 
 ---
 
-## 9️⃣ Container Orchestration Choices
+## 4️⃣ Redis Failure
 
-### ECS (Primary)
-- Managed by AWS
-- Minimal operational overhead
-- Ideal for mid-level backend systems
+**What fails**
+- Redis restart
+- Broker unavailable
 
-### EKS (Conceptual)
-- Kubernetes-based
-- Higher flexibility
-- Higher complexity
+**Impact**
+- Background jobs pause
+- Rate limiting unavailable
 
-Rule:
-> Master ECS first, understand EKS conceptually.
+**Why it’s safe**
+- Redis is not a source of truth
+- Core data stored in PostgreSQL
 
----
-
-## 🔁 End-to-End Request Flow
-
-Client
-→ HTTPS
-→ Load Balancer
-→ FastAPI (ECS)
-→ PostgreSQL (sync)
-→ Redis / SQS (async)
-→ Worker (ECS)
-→ Elasticsearch (optional)
+**Recovery**
+- Redis restart
+- Jobs resume automatically
 
 ---
 
-## 🎯 Why This Architecture
+## 5️⃣ Rate Limiting Failure
 
-This architecture demonstrates:
-- Real-world backend patterns
-- Cloud-native design
-- Clear ownership boundaries
-- Scalability without overengineering
-- Strong production readiness
+**What fails**
+- Redis-based rate limit keys lost
 
-It is intentionally designed to reflect **mid-level backend expectations** while laying a clean path toward senior-level systems.
+**Impact**
+- Temporary loss of rate limiting
+
+**Why it’s acceptable**
+- Rate limiting is a protection layer
+- Not required for correctness
 
 ---
+
+## 🧠 Key Takeaway
+
+TaskHub is designed so that:
+- State is protected by PostgreSQL
+- Async systems absorb instability
+- Failures are isolated by layer
+
+Correct systems are defined not by avoiding failure, but by **recovering without corruption**.
