@@ -112,6 +112,12 @@ taskhub-api/
 │   └── versions/
 │       └── 0001_init_schema.py
 │
+├── docs/               
+│   ├── ARCHITECTURE.md
+│   ├── FAILURE_MODES.md
+│   ├── SCALING.md
+│   └── TERRAFORM_ALIGNMENT.md
+│
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
