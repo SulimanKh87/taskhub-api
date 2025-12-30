@@ -1,0 +1,52 @@
+taskhub-api/
+│
+├── app/
+│   ├── main.py                   # FastAPI entrypoint
+│   ├── config.py                 # Environment & settings
+│   ├── db.py                     # Async SQLAlchemy engine & session
+│   ├── security.py               # Password hashing + JWT helpers
+│   ├── idempotency.py            # SQL-backed idempotent job helpers
+│   │
+│   ├── routes/
+│   │   ├── auth.py               # Register & login
+│   │   └── tasks.py              # Task CRUD + pagination
+│   │
+│   ├── schemas/                  # API contracts (Pydantic v2)
+│   │   ├── user_schema.py
+│   │   ├── task_schema.py
+│   │   ├── pagination_schema.py
+│   │   └── token_schema.py
+│   │
+│   ├── models/                   # SQLAlchemy ORM models
+│   │   ├── base.py
+│   │   ├── user.py
+│   │   ├── task.py
+│   │   └── job_log.py
+│   │
+│   ├── workers/
+│   │   ├── celery_app.py
+│   │   └── tasks/
+│   │       └── email_tasks.py
+│   │
+│   └── tests/
+│       ├── conftest.py
+│       ├── test_api.py
+│       ├── test_tasks.py
+│       └── test_idempotency.py
+│
+├── alembic/
+│   ├── env.py
+│   └── versions/
+│       └── 0001_init_schema.py
+│
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── SECURITY.md
+│   ├── FAILURE_MODES.md
+│
+├── pytest.ini
+├── docker-compose.yml
+├── Dockerfile
+├── requirements.txt
+├── .env.example
+└── README.md
