@@ -14,12 +14,13 @@ jobs:
 
     env:
       ENV: test
+      PYTHONPATH: ${{ github.workspace }}
       # Branch-aware backend selection
-      BACKEND: ${{ startsWith(github.ref, 'refs/heads/feature/sql') && 'postgres' || 'mongo' }}
+      BACKEND: ${{ github.ref == 'refs/heads/main-sql' && 'postgres' || 'mongo' }}
 
     services:
       # ----------------------------
-      # MongoDB (v1.5 - main branch)
+      # MongoDB (main branch)
       # ----------------------------
       mongo:
         image: mongo:7
@@ -33,7 +34,7 @@ jobs:
         if: env.BACKEND == 'mongo'
 
       # ----------------------------
-      # PostgreSQL (v2.0 - SQL branches)
+      # PostgreSQL (main-sql branch)
       # ----------------------------
       postgres:
         image: postgres:16
@@ -50,19 +51,6 @@ jobs:
           --health-retries=5
         if: env.BACKEND == 'postgres'
 
-      # ----------------------------
-      # Redis (shared)
-      # ----------------------------
-      redis:
-        image: redis:7
-        ports:
-          - 6379:6379
-        options: >-
-          --health-cmd="redis-cli ping"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -78,11 +66,14 @@ jobs:
           pip install -r requirements.txt
           pip install black ruff
 
+      # ----------------------------
+      # Formatting & linting
+      # ----------------------------
       - name: Format check (Black)
         run: black --check .
 
-      - name: Add project root to PYTHONPATH
-        run: echo "PYTHONPATH=$(pwd)" >> $GITHUB_ENV
+      - name: Lint (Ruff)
+        run: ruff check .
 
       # ----------------------------
       # Environment configuration
@@ -92,12 +83,9 @@ jobs:
           echo "app_name=taskhub-api" >> .env
           echo "app_env=test" >> .env
           echo "app_debug=false" >> .env
-          echo "app_port=8000" >> .env
           echo "jwt_secret=ci_test_secret_key" >> .env
           echo "jwt_algorithm=HS256" >> .env
           echo "jwt_expire_minutes=30" >> .env
-          echo "jwt_refresh_days=1" >> .env
-          echo "redis_broker=redis://localhost:6379/0" >> .env
 
           if [ "$BACKEND" = "mongo" ]; then
             echo "mongodb_uri=mongodb://localhost:27017" >> .env
@@ -109,28 +97,9 @@ jobs:
       - name: Show backend mode
         run: echo "🧪 Running CI with BACKEND=$BACKEND"
 
-      - name: Lint (Ruff)
-        run: ruff check .
-
       # ----------------------------
-      # Celery worker (shared)
-      # ----------------------------
-      - name: Start Celery worker
-        run: |
-          celery -A app.workers.celery_app.celery_app worker \
-            --loglevel=INFO \
-            --pool=solo &
-          sleep 5
-        env:
-          PYTHONPATH: ${{ github.workspace }}
-
-      # ----------------------------
-      # Tests (strict separation)
+      # Tests (Celery mocked)
       # ----------------------------
       - name: Run tests
         run: |
-          if [ "$BACKEND" = "mongo" ]; then
-            pytest -v app/tests_mongo --disable-warnings
-          else
-            pytest -v app/tests --disable-warnings
-          fi
+          pytest -v app/tests --disable-warnings
