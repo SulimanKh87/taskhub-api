@@ -11,6 +11,14 @@
 > **Status:** Production-grade backend (SQL)  
 > **Release Type:** Storage-layer migration (MongoDB → PostgreSQL)
 
+> ⚠️ **SQL Branch**
+>
+> This branch runs the **PostgreSQL (SQLAlchemy) implementation** of TaskHub.
+> The MongoDB version lives on the `main` branch.
+>
+> All tests, migrations, and pagination behavior in this branch
+> are validated against **PostgreSQL with schema enforcement**.
+
 📚 Overview
 **TaskHub API** is a production-style backend service for user and task management, built with **FastAPI**, **PostgreSQL**, **Celery**, and **Redis**.
 
@@ -119,7 +127,41 @@ taskhub-api/
 │       ├── test_api.py
 │       ├── test_tasks.py
 │       └── test_idempotency.py
-│
+│## 🧪 Testing Strategy (Production-Grade)
+
+This project uses a **layered async testing strategy** designed to mirror
+real-world FastAPI production systems.
+
+### Test Types
+
+- **Async API tests (httpx.AsyncClient)**
+  - Full request lifecycle
+  - Real dependency injection
+  - Single event loop (no sync/async mixing)
+  - Matches FastAPI + async SQLAlchemy behavior
+
+- **Database-backed tests**
+  - Real PostgreSQL engine
+  - Transaction-scoped sessions
+  - Deterministic cleanup between tests
+
+- **Idempotency logic tests**
+  - SQL-backed job_log table
+  - Exactly-once execution guarantees
+  - Safe retries and race-condition protection
+
+### Why NOT TestClient?
+
+FastAPI’s synchronous `TestClient` runs the application in a separate thread.
+When combined with async SQLAlchemy and pytest, this can cause:
+
+- Event-loop deadlocks
+- Connection pool starvation
+- Flaky CI behavior
+
+This project **intentionally avoids TestClient** in favor of
+`httpx.AsyncClient(app=app)` to ensure correctness and stability.
+
 ├── alembic/
 │   ├── env.py
 │   └── versions/
@@ -130,6 +172,7 @@ taskhub-api/
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
 │
+├── pytest.ini 
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -216,12 +259,86 @@ Celery worker
 GET /health
 
 🧪 Testing
+# Run the full test suite:
+```bash
 pytest -v
+```
+# Tests include:
+Async API tests
+SQL-backed idempotency verification
+Pagination contract validation
+Transaction-safe database isolation
+
+**Testing Guarantees** box
+
+This is short but screams *senior engineer*.
+
+```md
+### ✅ Testing Guarantees
+
+- No background jobs run during API tests
+- No Redis dependency for request/response validation
+- No shared event loops across threads
+- No flaky timing-based assertions
+
+If tests pass, production behavior is reproducible.
+```
 
 # Tests run against:
 Real PostgreSQL
 Real Redis
 SQL transactions with rollback isolation
+
+## 🧪 Testing Strategy (Production-Grade)
+
+This project uses a **layered async testing strategy** designed to mirror
+real-world FastAPI production systems.
+
+### Test Types
+
+- **Async API tests (httpx.AsyncClient)**
+  - Full request lifecycle
+  - Real dependency injection
+  - Single event loop (no sync/async mixing)
+  - Matches FastAPI + async SQLAlchemy behavior
+
+- **Database-backed tests**
+  - Real PostgreSQL engine
+  - Transaction-scoped sessions
+  - Deterministic cleanup between tests
+
+- **Idempotency logic tests**
+  - SQL-backed job_log table
+  - Exactly-once execution guarantees
+  - Safe retries and race-condition protection
+
+### Why NOT TestClient?
+
+FastAPI’s synchronous `TestClient` runs the application in a separate thread.
+When combined with async SQLAlchemy and pytest, this can cause:
+
+- Event-loop deadlocks
+- Connection pool starvation
+- Flaky CI behavior
+
+This project **intentionally avoids TestClient** in favor of
+`httpx.AsyncClient(app=app)` to ensure correctness and stability.
+
+### Background Jobs in Tests
+
+Celery tasks are **explicitly disabled in test runs**.
+
+Reason:
+- API tests must be deterministic
+- Redis must not be required for API correctness
+- Background retries can cause hanging test suites
+
+Implementation:
+- Celery `send_task()` is mocked at test runtime
+- Business logic is tested separately from infrastructure
+- Redis is only required for integration or worker tests
+
+This separation reflects how production teams test async systems safely.
 
 🔄 Version History
 # v1.5.0 — MongoDB Edition
