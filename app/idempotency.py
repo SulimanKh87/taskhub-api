@@ -1,7 +1,8 @@
 from datetime import datetime
 
-from sqlalchemy import select, insert, update
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.dialects.postgresql import insert  # IMPORTANT: PG insert for on_conflict
 
 from app.models.job_log import JobLog
 
@@ -10,37 +11,25 @@ from app.models.job_log import JobLog
 # Idempotent Job Helpers (PostgreSQL)
 # ============================================================
 
-async def get_job_result(
-    session: AsyncSession,
-    job_id: str,
-):
+async def get_job_result(session: AsyncSession, job_id: str):
     """
-    Return the saved job result if the job was already completed.
-
-    Used by Celery tasks to short-circuit duplicate executions.
+    Return saved job result if job already completed.
     """
     stmt = select(JobLog).where(
         JobLog.job_id == job_id,
         JobLog.status == "completed",
     )
-
-    result = await session.execute(stmt)
-    job = result.scalar_one_or_none()
-
+    res = await session.execute(stmt)
+    job = res.scalar_one_or_none()
     return job.result if job else None
 
 
-async def mark_job_started(
-    session: AsyncSession,
-    job_id: str,
-):
+async def mark_job_started(session: AsyncSession, job_id: str) -> None:
     """
-    Mark a job as started in an idempotent way.
+    Create job_log row if it doesn't exist (idempotent).
+    Duplicate calls are ignored via ON CONFLICT DO NOTHING.
 
-    This uses PostgreSQL's ON CONFLICT DO NOTHING to guarantee:
-    - Only one row per job_id
-    - Safe retries
-    - No duplicate executions
+    NOTE: Do NOT commit here — tests/requests may manage the transaction scope.
     """
     stmt = (
         insert(JobLog)
@@ -51,20 +40,15 @@ async def mark_job_started(
         )
         .on_conflict_do_nothing(index_elements=["job_id"])
     )
-
     await session.execute(stmt)
-    await session.commit()
+    await session.flush()
 
 
-async def save_job_result(
-    session: AsyncSession,
-    job_id: str,
-    result: dict,
-):
+async def save_job_result(session: AsyncSession, job_id: str, result: dict) -> None:
     """
-    Save job result and mark job as completed.
+    Persist a completed job result.
 
-    This updates the existing job_log row created during mark_job_started().
+    NOTE: Do NOT commit here — tests/requests may manage the transaction scope.
     """
     stmt = (
         update(JobLog)
@@ -75,6 +59,5 @@ async def save_job_result(
             updated_at=datetime.utcnow(),
         )
     )
-
     await session.execute(stmt)
-    await session.commit()
+    await session.flush()
