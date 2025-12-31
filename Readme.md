@@ -127,41 +127,7 @@ taskhub-api/
 │       ├── test_api.py
 │       ├── test_tasks.py
 │       └── test_idempotency.py
-│## 🧪 Testing Strategy (Production-Grade)
-
-This project uses a **layered async testing strategy** designed to mirror
-real-world FastAPI production systems.
-
-### Test Types
-
-- **Async API tests (httpx.AsyncClient)**
-  - Full request lifecycle
-  - Real dependency injection
-  - Single event loop (no sync/async mixing)
-  - Matches FastAPI + async SQLAlchemy behavior
-
-- **Database-backed tests**
-  - Real PostgreSQL engine
-  - Transaction-scoped sessions
-  - Deterministic cleanup between tests
-
-- **Idempotency logic tests**
-  - SQL-backed job_log table
-  - Exactly-once execution guarantees
-  - Safe retries and race-condition protection
-
-### Why NOT TestClient?
-
-FastAPI’s synchronous `TestClient` runs the application in a separate thread.
-When combined with async SQLAlchemy and pytest, this can cause:
-
-- Event-loop deadlocks
-- Connection pool starvation
-- Flaky CI behavior
-
-This project **intentionally avoids TestClient** in favor of
-`httpx.AsyncClient(app=app)` to ensure correctness and stability.
-
+│
 ├── alembic/
 │   ├── env.py
 │   └── versions/
@@ -339,6 +305,23 @@ Implementation:
 - Redis is only required for integration or worker tests
 
 This separation reflects how production teams test async systems safely.
+
+
+## 🤖 CI Pipeline (Branch-Aware & Deterministic)
+
+TaskHub uses a **single GitHub Actions pipeline** that adapts automatically
+based on the active branch.
+
+### Backend Selection Logic
+
+- `main` branch → **MongoDB (v1.5)**
+- `main-sql` / `feature/sql-*` branches → **PostgreSQL (v2.0)**
+
+This is controlled via a branch-aware environment variable in CI:
+
+```bash
+BACKEND = mongo | postgres
+```
 
 🔄 Version History
 # v1.5.0 — MongoDB Edition
