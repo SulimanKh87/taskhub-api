@@ -36,6 +36,7 @@ taskhub-api/
 │
 ├── alembic/
 │   ├── env.py
+│   ├── script.py.mako
 │   └── versions/
 │       └── 0001_init_schema.py
 │
