@@ -130,8 +130,9 @@ taskhub-api/
 │
 ├── alembic/
 │   ├── env.py
+│   ├── script.py.mako
 │   └── versions/
-│       └── 0001_init_schema.py
+│       └── 0001_init_schema.py   
 │
 ├── docs/               
 │   ├── ARCHITECTURE.md
@@ -196,16 +197,32 @@ safe retries
 crash safety
 parallel worker safety
 
-🗃 Database Migrations
-All schema changes are managed via Alembic.
-Initial migration includes:
-users table (unique usernames)
-tasks table (FK → users)
-Query-aligned index (owner_id, created_at DESC)
-job_log table for idempotency
 
-Run migrations:
-alembic upgrade head
+## 🗃 Database Migrations (Alembic)
+
+TaskHub uses **Alembic as the single source of truth** for database schema
+management. Runtime schema creation (`create_all`) is intentionally **not used**.
+
+### Migration Rules
+
+- All schema changes are managed via Alembic migrations
+- Application startup never modifies the database schema
+- Migrations are generated against an empty database for the initial schema
+- Production databases are upgraded explicitly and deterministically
+
+### Common Commands
+
+```bash
+# Create a new migration after changing models
+docker compose exec api alembic revision --autogenerate -m "describe change"
+
+# Apply migrations
+docker compose exec api alembic upgrade head
+
+# Check migration state
+docker compose exec api alembic current
+docker compose exec api alembic history
+
 
 🐳 Run Locally (Docker)
 docker-compose up --build
