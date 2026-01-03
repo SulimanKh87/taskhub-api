@@ -29,9 +29,6 @@ from app.models.base import Base
 def _create_engine() -> AsyncEngine:
     is_test = settings.env.lower() == "test"
 
-    # NullPool is best for unit/integration tests:
-    # - no pooled connections surviving across loops
-    # - avoids "Future attached to a different loop"
     poolclass = NullPool if is_test else None
 
     return create_async_engine(
@@ -39,13 +36,12 @@ def _create_engine() -> AsyncEngine:
         echo=settings.sql_echo,
         future=True,
         poolclass=poolclass,
-        pool_pre_ping=not is_test,  # pre_ping is fine for prod, not needed for tests
+        pool_pre_ping=not is_test,
     )
 
 
 engine: AsyncEngine = _create_engine()
 
-# A factory (NOT a session instance)
 SessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
     bind=engine,
     expire_on_commit=False,
@@ -55,12 +51,13 @@ SessionLocal: async_sessionmaker[AsyncSession] = async_sessionmaker(
 
 
 async def get_db() -> AsyncIterator[AsyncSession]:
-    """
-    FastAPI dependency: one DB session per request.
-
-    Ensures:
-    - no session sharing between concurrent requests
-    - sessions always closed
-    """
     async with SessionLocal() as session:
         yield session
+
+
+# ------------------------------------------------------------
+# Import ORM models so Alembic can discover them
+# ------------------------------------------------------------
+from app.models.user import User
+from app.models.task import Task
+from app.models.job_log import JobLog

@@ -1,6 +1,5 @@
-# app/models/task.py
-
 from datetime import datetime
+
 from sqlalchemy import String, DateTime, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,7 +28,10 @@ class Task(Base):
         String,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
-        index=True,
+        # NOTE:
+        # index=True intentionally REMOVED.
+        # Indexing is handled explicitly via the composite index below
+        # to avoid ORM/Alembic drift.
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -40,7 +42,7 @@ class Task(Base):
 
 
 # ------------------------------------------------------------
-# Index aligned with pagination query
+# Composite index aligned with pagination query
 # (owner_id ASC, created_at DESC)
 # ------------------------------------------------------------
 Index(
