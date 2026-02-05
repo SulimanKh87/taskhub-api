@@ -44,6 +44,14 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the source code into the image
 COPY . .
 
+# Create non-root user for runtime (AWS / ECS best practice)
+RUN useradd -m appuser \
+    && chown -R appuser:appuser /app
+
+# Drop root privileges for runtime
+USER appuser
+
+
 # ==========================
 # Container runtime configuration
 # ==========================
