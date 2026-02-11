@@ -1,6 +1,8 @@
+# this is updated project structure that overwrites any exisiting structure in the readme.md
 taskhub-api/
 │
 ├── app/
+│   ├── __init__.py
 │   ├── main.py                   # FastAPI entrypoint
 │   ├── config.py                 # Environment & settings
 │   ├── db.py                     # Async SQLAlchemy engine & session
@@ -24,8 +26,10 @@ taskhub-api/
 │   │   └── job_log.py
 │   │
 │   ├── workers/
+│   │   ├── __init__.py
 │   │   ├── celery_app.py
 │   │   └── tasks/
+│   │       ├── __init__.py
 │   │       └── email_tasks.py
 │   │
 │   └── tests/
@@ -41,6 +45,7 @@ taskhub-api/
 │   ├── .terraform
 │   ├── variables.tf
 │   ├── provider.tf
+│   ├── .terraform.lock.hcl
 │   └── outputs.tf
 │
 ├── alembic/
@@ -59,4 +64,5 @@ taskhub-api/
 ├── Dockerfile
 ├── requirements.txt
 ├── .env.example
-└── README.md
+├── README.md
+└── project_structure.txt       # (Optional) documentation snapshot
