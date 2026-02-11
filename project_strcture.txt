@@ -36,6 +36,9 @@ taskhub-api/
 │
 ├── infra/terraform/
 │   ├── main.tf
+│   ├── .terraform.lock.hcl
+│   ├── terraform.tfvars.example
+│   ├── .terraform
 │   ├── variables.tf
 │   ├── provider.tf
 │   └── outputs.tf
