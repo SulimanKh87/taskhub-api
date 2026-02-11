@@ -1,0 +1,15 @@
+project    = "taskhub"
+env        = "dev"
+aws_region = "eu-central-1"
+
+# Images (set to YOUR ECR image URIs after you push)
+api_image    = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
+worker_image = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-worker:latest"
+
+# Secrets (DON'T commit real ones)
+jwt_secret  = "CHANGE_ME"
+db_password = "CHANGE_ME_SUPER_SECRET"
+
+# optional
+api_desired_count    = 1
+worker_desired_count = 1

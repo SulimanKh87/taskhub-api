@@ -59,23 +59,20 @@ The goal of this project is to demonstrate real backend engineering, not just CR
 - Database schema migrations with Alembic
 - Clean separation between API, domain, and persistence layers
 
-## 🧱 System Architecture
+## 🧱 System Architecture no AWS 
 ```text
 Client
   │
   ▼
-FastAPI (async)
+Application Load Balancer (AWS)
   │
-  ├── PostgreSQL (SQLAlchemy async)
-  │     ├── users
-  │     ├── tasks
-  │     └── job_log (idempotency)
-  │
-  ├── Redis
-  │     └── Celery broker & result backend
-  │
-  └── Celery Workers
-        └── idempotent background tasks
+  ▼
+ECS Fargate
+  ├── FastAPI API container
+  └── Celery worker container
+        │
+        ├── RDS PostgreSQL (private subnet)
+        └── ElastiCache Redis (private subnet)
 ```
 📐 Architecture & Operational Guarantees (Current State)
 
@@ -88,6 +85,32 @@ This project documents **only the systems and guarantees that currently exist**.
 
 These documents focus on **correctness, failure isolation, and predictable behavior**
 rather than hypothetical infrastructure or future deployment plans.
+
+## ☁️ AWS Infrastructure (Terraform)
+
+This project includes a complete Infrastructure-as-Code setup using Terraform.
+
+Provisioned resources:
+
+- VPC with public & private subnets
+- Application Load Balancer (ALB)
+- ECS Fargate cluster
+- API service + Celery worker service
+- RDS PostgreSQL (private subnet)
+- ElastiCache Redis (private subnet)
+- ECR repositories (API + worker)
+- CloudWatch log groups
+- Least-privilege security groups
+
+Infrastructure is defined in:
+
+infra/terraform/
+
+Design goals:
+- Mid-level backend learning setup
+- Clear networking boundaries
+- Reproducible cloud environment
+- No secrets baked into images
 
 
 🗂 Project Structure
@@ -128,18 +151,27 @@ taskhub-api/
 │       ├── test_tasks.py
 │       └── test_idempotency.py
 │
+├── infra/terraform/
+│   ├── main.tf
+│   ├── .terraform.lock.hcl
+│   ├── terraform.tfvars.example
+│   ├── .terraform
+│   ├── variables.tf
+│   ├── provider.tf
+│   └── outputs.tf
+│
 ├── alembic/
 │   ├── env.py
 │   ├── script.py.mako
 │   └── versions/
-│       └── 0001_init_schema.py   
+│       └── 0001_init_schema.py
 │
-├── docs/               
+├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
 │
-├── pytest.ini 
+├── pytest.ini
 ├── docker-compose.yml
 ├── Dockerfile
 ├── requirements.txt
@@ -147,25 +179,36 @@ taskhub-api/
 └── README.md
 ```
 
-🛠 Tech Stack
-# Backend
-Python 3.12
-FastAPI
-Pydantic v2
-# Database
-PostgreSQL 16
-SQLAlchemy 2.0 (async)
-Alembic (migrations)
-# Background Jobs
-Celery
-Redis
-# Auth & Security
-JWT (python-jose)
-bcrypt / sha256_crypt (test mode)
-# Tooling
-Docker & Docker Compose
-Pytest + pytest-asyncio
-GitHub Actions CI
+## 🛠 Tech Stack
+
+### Backend
+- Python 3.12
+- FastAPI
+- Pydantic v2
+
+### Database
+- PostgreSQL 16 (RDS-compatible)
+- SQLAlchemy 2.0 (async)
+- Alembic (migrations)
+
+### Background Jobs
+- Celery
+- Redis (ElastiCache-compatible)
+
+### Infrastructure (AWS)
+- ECS Fargate
+- Application Load Balancer (ALB)
+- RDS (PostgreSQL)
+- ElastiCache (Redis)
+- ECR (container registry)
+- CloudWatch Logs
+- Terraform (Infrastructure as Code)
+
+### DevOps & Tooling
+- Docker & Docker Compose
+- Pytest + pytest-asyncio
+- GitHub Actions CI
+
 
 🔐 Authentication
 JWT Bearer authentication
@@ -240,6 +283,19 @@ Redis
 Celery worker
 # Health check:
 GET /health
+
+## 🚀 Deployment (AWS)
+Terraform is used to provision infrastructure:
+
+cd infra/terraform
+terraform init
+terraform plan
+terraform apply
+
+After provisioning:
+- Push Docker images to ECR
+- Update ECS services with new image tags
+
 
 🧪 Testing
 # Run the full test suite:

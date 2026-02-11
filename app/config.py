@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     )
     sql_echo: bool = Field(default=False, alias="SQL_ECHO")
 
+    db_pool_size: int = Field(default=5, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=10, alias="DB_MAX_OVERFLOW")
+    db_pool_timeout: int = Field(default=30, alias="DB_POOL_TIMEOUT")
+    db_pool_recycle_seconds: int = Field(default=1800, alias="DB_POOL_RECYCLE_SECONDS")
+
     # ---------------------
     # JWT
     # ---------------------
@@ -60,3 +65,4 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
