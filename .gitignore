@@ -39,3 +39,7 @@ env/
 
 # Terraform
 **/.terraform/
+
+# Local AWS CLI installer artifacts
+aws/
+awscliv2.zip
