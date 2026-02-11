@@ -1,9 +1,10 @@
+# variables.tf
 # -------------------------
 # Project / environment
 # -------------------------
 variable "project" {
   description = "Project name (used as prefix for all resources)"
-  type        = string
+  type        = strinlag
   default     = "taskhub"
 }
 
@@ -38,7 +39,7 @@ variable "worker_image" {
 }
 
 # -------------------------
-# ECS task sizing (IMPORTANT BACKEND SKILL)
+# ECS task sizing
 # -------------------------
 variable "api_cpu" {
   description = "CPU units for the API ECS task (256 = 0.25 vCPU)"
@@ -64,8 +65,21 @@ variable "worker_memory" {
   default     = 512
 }
 
+variable "api_desired_count" {
+  description = "Desired tasks for API service"
+  type        = number
+  default     = 1
+}
+
+variable "worker_desired_count" {
+  description = "Desired tasks for Celery worker service"
+  type        = number
+  default     = 1
+}
+
 # -------------------------
-# Application secrets / config
+# App config / secrets (for learning: env vars in task definition)
+# Later: move secrets to SSM/Secrets Manager
 # -------------------------
 variable "jwt_secret" {
   description = "JWT signing secret"
@@ -73,14 +87,54 @@ variable "jwt_secret" {
   default     = "CHANGE_ME"
 }
 
-variable "database_url" {
-  description = "PostgreSQL connection string"
+# -------------------------
+# RDS (Postgres)
+# -------------------------
+variable "db_name" {
+  description = "Database name for Postgres"
   type        = string
-  default     = "postgresql://user:password@localhost:5432/taskhub"
+  default     = "taskhub"
 }
 
-variable "redis_broker" {
-  description = "Redis broker URL for Celery"
+variable "db_username" {
+  description = "Master username for Postgres"
   type        = string
-  default     = "redis://localhost:6379/0"
+  default     = "taskhub"
+}
+
+variable "db_password" {
+  description = "Master password for Postgres (do NOT commit real secrets)"
+  type        = string
+  sensitive   = true
+  default     = "taskhub_pass_CHANGE_ME"
+}
+
+variable "rds_instance_class" {
+  description = "RDS instance type"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "RDS allocated storage (GB)"
+  type        = number
+  default     = 20
+}
+
+# -------------------------
+# ElastiCache (Redis)
+# -------------------------
+variable "redis_node_type" {
+  description = "Redis node type"
+  type        = string
+  default     = "cache.t4g.micro"
+}
+
+# -------------------------
+# Logs
+# -------------------------
+variable "log_retention_days" {
+  description = "CloudWatch log retention days"
+  type        = number
+  default     = 7
 }

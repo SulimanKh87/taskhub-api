@@ -1,9 +1,17 @@
+# main.tf
 locals {
   name = "${var.project}-${var.env}"
+
+  # Terraform-built endpoints -> used inside ECS env
+  db_host    = aws_db_instance.postgres.address
+  redis_host = aws_elasticache_cluster.redis.cache_nodes[0].address
+
+  database_url = "postgresql+asyncpg://${var.db_username}:${var.db_password}@${local.db_host}:5432/${var.db_name}"
+  redis_broker = "redis://${local.redis_host}:6379/0"
 }
 
 # -------------------------
-# VPC (minimal public-only)
+# VPC
 # -------------------------
 resource "aws_vpc" "this" {
   cidr_block           = "10.20.0.0/16"
@@ -16,6 +24,11 @@ resource "aws_internet_gateway" "igw" {
   tags   = { Name = "${local.name}-igw" }
 }
 
+# -------------------------
+# Subnets
+# Public: ALB + ECS tasks (simple learning setup)
+# Private: DB + Redis
+# -------------------------
 resource "aws_subnet" "public_a" {
   vpc_id                  = aws_vpc.this.id
   cidr_block              = "10.20.1.0/24"
@@ -30,6 +43,22 @@ resource "aws_subnet" "public_b" {
   availability_zone       = "${var.aws_region}b"
   map_public_ip_on_launch = true
   tags                    = { Name = "${local.name}-public-b" }
+}
+
+resource "aws_subnet" "private_a" {
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = "10.20.11.0/24"
+  availability_zone       = "${var.aws_region}a"
+  map_public_ip_on_launch = false
+  tags                    = { Name = "${local.name}-private-a" }
+}
+
+resource "aws_subnet" "private_b" {
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = "10.20.12.0/24"
+  availability_zone       = "${var.aws_region}b"
+  map_public_ip_on_launch = false
+  tags                    = { Name = "${local.name}-private-b" }
 }
 
 resource "aws_route_table" "public" {
@@ -51,11 +80,31 @@ resource "aws_route_table_association" "public_b" {
   route_table_id = aws_route_table.public.id
 }
 
+# Private RT: local-only (no internet). OK for DB/Redis.
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.this.id
+  tags   = { Name = "${local.name}-private-rt" }
+}
+
+resource "aws_route_table_association" "private_a" {
+  subnet_id      = aws_subnet.private_a.id
+  route_table_id = aws_route_table.private.id
+}
+
+resource "aws_route_table_association" "private_b" {
+  subnet_id      = aws_subnet.private_b.id
+  route_table_id = aws_route_table.private.id
+}
+
 # -------------------------
-# ECR (repo declared as code)
+# ECR
 # -------------------------
 resource "aws_ecr_repository" "api" {
   name = "${local.name}-api"
+}
+
+resource "aws_ecr_repository" "worker" {
+  name = "${local.name}-worker"
 }
 
 # -------------------------
@@ -63,16 +112,16 @@ resource "aws_ecr_repository" "api" {
 # -------------------------
 resource "aws_cloudwatch_log_group" "api" {
   name              = "/ecs/${local.name}-api"
-  retention_in_days = 7
+  retention_in_days = var.log_retention_days
 }
 
 resource "aws_cloudwatch_log_group" "worker" {
   name              = "/ecs/${local.name}-worker"
-  retention_in_days = 7
+  retention_in_days = var.log_retention_days
 }
 
 # -------------------------
-# Security groups
+# Security groups (mid-backend best practice)
 # -------------------------
 resource "aws_security_group" "alb" {
   name   = "${local.name}-alb-sg"
@@ -93,11 +142,11 @@ resource "aws_security_group" "alb" {
   }
 }
 
-resource "aws_security_group" "ecs" {
-  name   = "${local.name}-ecs-sg"
+resource "aws_security_group" "api" {
+  name   = "${local.name}-api-sg"
   vpc_id = aws_vpc.this.id
 
-  # ALB -> ECS (container port 8000)
+  # ALB -> API
   ingress {
     from_port       = 8000
     to_port         = 8000
@@ -111,6 +160,105 @@ resource "aws_security_group" "ecs" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
+}
+
+resource "aws_security_group" "worker" {
+  name   = "${local.name}-worker-sg"
+  vpc_id = aws_vpc.this.id
+
+  # No ingress required for worker
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "db" {
+  name   = "${local.name}-db-sg"
+  vpc_id = aws_vpc.this.id
+
+  ingress {
+    from_port       = 5432
+    to_port         = 5432
+    protocol        = "tcp"
+    security_groups = [aws_security_group.api.id, aws_security_group.worker.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+resource "aws_security_group" "redis" {
+  name   = "${local.name}-redis-sg"
+  vpc_id = aws_vpc.this.id
+
+  ingress {
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [aws_security_group.api.id, aws_security_group.worker.id]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
+# -------------------------
+# RDS (Postgres)
+# -------------------------
+resource "aws_db_subnet_group" "db" {
+  name       = "${local.name}-db-subnets"
+  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+}
+
+resource "aws_db_instance" "postgres" {
+  identifier        = "${local.name}-postgres"
+  engine            = "postgres"
+  engine_version    = "16"
+  instance_class    = var.rds_instance_class
+  allocated_storage = var.rds_allocated_storage
+
+  db_name  = var.db_name
+  username = var.db_username
+  password = var.db_password
+
+  db_subnet_group_name   = aws_db_subnet_group.db.name
+  vpc_security_group_ids = [aws_security_group.db.id]
+
+  publicly_accessible = false
+  skip_final_snapshot = true
+
+  deletion_protection = false
+  apply_immediately   = true
+}
+
+# -------------------------
+# ElastiCache (Redis) - minimal single node for learning
+# -------------------------
+resource "aws_elasticache_subnet_group" "redis" {
+  name       = "${local.name}-redis-subnets"
+  subnet_ids = [aws_subnet.private_a.id, aws_subnet.private_b.id]
+}
+
+resource "aws_elasticache_cluster" "redis" {
+  cluster_id      = "${local.name}-redis"
+  engine          = "redis"
+  node_type       = var.redis_node_type
+  num_cache_nodes = 1
+  port            = 6379
+
+  subnet_group_name  = aws_elasticache_subnet_group.redis.name
+  security_group_ids = [aws_security_group.redis.id]
 }
 
 # -------------------------
@@ -148,7 +296,7 @@ resource "aws_lb_listener" "http" {
 }
 
 # -------------------------
-# IAM role for ECS task execution (pull image + write logs)
+# IAM role for ECS task execution
 # -------------------------
 data "aws_iam_policy_document" "ecs_task_assume" {
   statement {
@@ -192,6 +340,7 @@ resource "aws_ecs_task_definition" "api" {
     name      = "api"
     image     = var.api_image
     essential = true
+
     portMappings = [{
       containerPort = 8000
       hostPort      = 8000
@@ -201,8 +350,8 @@ resource "aws_ecs_task_definition" "api" {
     environment = [
       { name = "ENV", value = "prod" },
       { name = "JWT_SECRET", value = var.jwt_secret },
-      { name = "DATABASE_URL", value = var.database_url },
-      { name = "REDIS_BROKER", value = var.redis_broker }
+      { name = "DATABASE_URL", value = local.database_url },
+      { name = "REDIS_BROKER", value = local.redis_broker }
     ]
 
     logConfiguration = {
@@ -220,12 +369,12 @@ resource "aws_ecs_service" "api" {
   name            = "${local.name}-api"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = 1
+  desired_count   = var.api_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.api.id]
     assign_public_ip = true
   }
 
@@ -259,8 +408,8 @@ resource "aws_ecs_task_definition" "worker" {
     environment = [
       { name = "ENV", value = "prod" },
       { name = "JWT_SECRET", value = var.jwt_secret },
-      { name = "DATABASE_URL", value = var.database_url },
-      { name = "REDIS_BROKER", value = var.redis_broker }
+      { name = "DATABASE_URL", value = local.database_url },
+      { name = "REDIS_BROKER", value = local.redis_broker }
     ]
 
     logConfiguration = {
@@ -278,12 +427,12 @@ resource "aws_ecs_service" "worker" {
   name            = "${local.name}-worker"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.worker.arn
-  desired_count   = 1
+  desired_count   = var.worker_desired_count
   launch_type     = "FARGATE"
 
   network_configuration {
     subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
-    security_groups  = [aws_security_group.ecs.id]
+    security_groups  = [aws_security_group.worker.id]
     assign_public_ip = true
   }
 }
