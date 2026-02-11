@@ -39,3 +39,23 @@ env/
 
 # Terraform
 **/.terraform/
+infra/terraform/terraform.tfvars
+# Terraform state
+*.tfstate
+*.tfstate.*
+crash.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+# Keep Terraform lock file tracked
+# Tracking .terraform.lock.hcl ensures:
+  #
+  #Same provider version for everyone
+  #
+  #Reproducible infrastructure
+  #
+  #Stable CI pipelines
+  #
+  #No surprise upgrades
+!infra/terraform/.terraform.lock.hcl
