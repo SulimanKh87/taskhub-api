@@ -36,10 +36,3 @@ docker-compose.override.yml
 venv/
 env/
 .venv/
-
-# Terraform
-**/.terraform/
-
-# Local AWS CLI installer artifacts
-aws/
-awscliv2.zip

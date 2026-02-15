@@ -81,7 +81,7 @@ async def register_user(
     job_id = f"welcome_email:{new_user.id}"
 
     celery_app.send_task(
-        "taskhub.send_welcome_email",
+        "tasks.send_welcome_email",
         args=[new_user.username, job_id],
     )
 
