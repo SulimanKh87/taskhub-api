@@ -3,10 +3,10 @@ name: CI - TaskHub API
 on:
   push:
     branches:
-      - "*"
+      - "**"
   pull_request:
     branches:
-      - "*"
+      - "**"
 
 jobs:
   test:
@@ -16,7 +16,8 @@ jobs:
       ENV: test
       PYTHONPATH: ${{ github.workspace }}
       # Branch-aware backend selection
-      BACKEND: ${{ github.ref == 'refs/heads/main-sql' && 'postgres' || 'mongo' }}
+      BACKEND: ${{ (github.ref == 'refs/heads/main-sql' || github.base_ref == 'main-sql') && 'postgres' || 'mongo' }}
+
 
     services:
       # ----------------------------
@@ -31,7 +32,8 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-        if: env.BACKEND == 'mongo'
+        # if: env.BACKEND == 'mongo'  # NOTE: GitHub Actions does not support 'if' under services
+
 
       # ----------------------------
       # PostgreSQL (main-sql branch)
@@ -49,7 +51,20 @@ jobs:
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
-        if: env.BACKEND == 'postgres'
+        # if: env.BACKEND == 'postgres'  # NOTE: GitHub Actions does not support 'if' under services
+
+      # ----------------------------
+      # Redis (Celery broker) - safe CI dependency
+      # ----------------------------
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
 
     steps:
       - name: Checkout code
@@ -80,18 +95,21 @@ jobs:
       # ----------------------------
       - name: Create test .env
         run: |
-          echo "app_name=taskhub-api" >> .env
-          echo "app_env=test" >> .env
-          echo "app_debug=false" >> .env
-          echo "jwt_secret=ci_test_secret_key" >> .env
-          echo "jwt_algorithm=HS256" >> .env
-          echo "jwt_expire_minutes=30" >> .env
+          echo "APP_NAME=taskhub-api" >> .env
+          echo "APP_ENV=test" >> .env
+          echo "APP_DEBUG=false" >> .env
+          echo "ENV=test" >> .env
+          echo "JWT_SECRET=ci_test_secret_key" >> .env
+          echo "JWT_ALGORITHM=HS256" >> .env
+          echo "JWT_EXPIRE_MINUTES=30" >> .env
+          echo "REDIS_BROKER=redis://localhost:6379/0" >> .env
+
 
           if [ "$BACKEND" = "mongo" ]; then
-            echo "mongodb_uri=mongodb://localhost:27017" >> .env
-            echo "mongodb_db=test_db" >> .env
+            echo "MONGODB_URI=mongodb://localhost:27017" >> .env
+            echo "MONGODB_DB=test_db" >> .env
           else
-            echo "database_url=postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub" >> .env
+            echo "DATABASE_URL=postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub" >> .env
           fi
 
       - name: Show backend mode
@@ -103,3 +121,5 @@ jobs:
       - name: Run tests
         run: |
           pytest -v app/tests --disable-warnings
+      - name: Build image (CI)
+        run: docker build -t taskhub:${{ github.sha }} .
