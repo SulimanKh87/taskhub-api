@@ -38,19 +38,19 @@ taskhub-api/
 │       ├── test_tasks.py
 │       └── test_idempotency.py
 │
-├── infra/ecs-tasks/
-│  # Create infra/ecs-tasks/worker-task-definition.json
-│  # Create infra/ecs-tasks/api-task-definition.json
-│
-├── infra/terraform/
-│   ├── main.tf
-│   ├── .terraform.lock.hcl
-│   ├── terraform.tfvars.example
-│   ├── .terraform
-│   ├── variables.tf
-│   ├── provider.tf
-│   ├── .terraform.lock.hcl
-│   └── outputs.tf
+├── infra/
+│   ├── ecs-tasks/
+│   │   ├── api-task-definition.json
+│   │   └── worker-task-definition.json
+│   └── terraform/
+│       ├── main.tf                        # VPC, subnets, SGs, RDS, Redis, ALB
+│       ├── ecs.tf
+│       ├── iam.tf
+│       ├── ecr.tf                         # ECR repos + lifecycle
+│       ├── variables.tf
+│       ├── outputs.tf
+│       ├── provider.tf
+│       └── .terraform.lock.hcl
 │
 ├── alembic/
 │   ├── env.py

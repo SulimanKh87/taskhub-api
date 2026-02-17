@@ -1,0 +1,57 @@
+{
+  "_comment": "=================================================================",
+  "_comment2": "infra/ecs-tasks/api-task-definition.json",
+  "_comment3": "Snapshot of the ECS task definition for the FastAPI API service.",
+  "_comment4": "This mirrors what Terraform generates in ecs.tf.",
+  "_comment5": "Replace ACCOUNT_ID, RDS_HOST, REDIS_HOST, and secrets before use.",
+  "_comment6": "=================================================================",
+
+  "family": "taskhub-dev-api",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "memory": "512",
+
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/taskhub-dev-ecs-task-exec",
+  "taskRoleArn":      "arn:aws:iam::ACCOUNT_ID:role/taskhub-dev-ecs-task-role",
+
+  "containerDefinitions": [
+    {
+      "name":      "api",
+      "image":     "ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest",
+      "essential": true,
+
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort":      8000,
+          "protocol":      "tcp"
+        }
+      ],
+
+      "environment": [
+        { "name": "ENV",          "value": "prod" },
+        { "name": "JWT_SECRET",   "value": "REPLACE_WITH_REAL_SECRET" },
+        { "name": "DATABASE_URL", "value": "postgresql+asyncpg://taskhub:REPLACE_PASSWORD@RDS_HOST:5432/taskhub" },
+        { "name": "REDIS_BROKER", "value": "redis://REDIS_HOST:6379/0" }
+      ],
+
+      "healthCheck": {
+        "command":     ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"],
+        "interval":    30,
+        "timeout":     5,
+        "retries":     3,
+        "startPeriod": 60
+      },
+
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/taskhub-dev-api",
+          "awslogs-region":        "eu-central-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

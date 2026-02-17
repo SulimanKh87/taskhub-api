@@ -1,0 +1,50 @@
+{
+  "_comment": "=================================================================",
+  "_comment2": "infra/ecs-tasks/worker-task-definition.json",
+  "_comment3": "Snapshot of the ECS task definition for the Celery worker service.",
+  "_comment4": "This mirrors what Terraform generates in ecs.tf.",
+  "_comment5": "Replace ACCOUNT_ID, RDS_HOST, REDIS_HOST, and secrets before use.",
+  "_comment6": "No port mappings — worker pulls from Redis, does not serve HTTP.",
+  "_comment7": "=================================================================",
+
+  "family": "taskhub-dev-worker",
+  "requiresCompatibilities": ["FARGATE"],
+  "networkMode": "awsvpc",
+  "cpu": "256",
+  "memory": "512",
+
+  "executionRoleArn": "arn:aws:iam::ACCOUNT_ID:role/taskhub-dev-ecs-task-exec",
+  "taskRoleArn":      "arn:aws:iam::ACCOUNT_ID:role/taskhub-dev-ecs-task-role",
+
+  "containerDefinitions": [
+    {
+      "name":      "worker",
+      "image":     "ACCOUNT_ID.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-worker:latest",
+      "essential": true,
+
+      "command": [
+        "celery",
+        "-A",
+        "app.workers.celery_app.celery_app",
+        "worker",
+        "--loglevel=INFO"
+      ],
+
+      "environment": [
+        { "name": "ENV",          "value": "prod" },
+        { "name": "JWT_SECRET",   "value": "REPLACE_WITH_REAL_SECRET" },
+        { "name": "DATABASE_URL", "value": "postgresql+asyncpg://taskhub:REPLACE_PASSWORD@RDS_HOST:5432/taskhub" },
+        { "name": "REDIS_BROKER", "value": "redis://REDIS_HOST:6379/0" }
+      ],
+
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group":         "/ecs/taskhub-dev-worker",
+          "awslogs-region":        "eu-central-1",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}

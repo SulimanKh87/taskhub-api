@@ -66,4 +66,5 @@ docker-compose.override.yml
 
 # Scripts temp files
 scripts/*.log
-scripts/temp/
+scripts/temp/aws/
+awscliv2.zip
