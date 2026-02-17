@@ -4,7 +4,7 @@
 # -------------------------
 variable "project" {
   description = "Project name (used as prefix for all resources)"
-  type        = strinlag
+  type        = string
   default     = "taskhub"
 }
 
@@ -109,6 +109,24 @@ variable "db_password" {
   default     = "taskhub_pass_CHANGE_ME"
 }
 
+# -------------------------
+# Secrets Manager (Optional - Future Migration)
+# -------------------------
+variable "db_password_secret_arn" {
+  description = "ARN of DB password in AWS Secrets Manager (optional). When set, overrides db_password variable."
+  type        = string
+  default     = null
+}
+
+variable "jwt_secret_arn" {
+  description = "ARN of JWT secret in AWS Secrets Manager (optional). When set, overrides jwt_secret variable."
+  type        = string
+  default     = null
+}
+
+# -------------------------
+# RDS Configuration
+# -------------------------
 variable "rds_instance_class" {
   description = "RDS instance type"
   type        = string

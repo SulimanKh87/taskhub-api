@@ -96,16 +96,6 @@ resource "aws_route_table_association" "private_b" {
   route_table_id = aws_route_table.private.id
 }
 
-# -------------------------
-# ECR
-# -------------------------
-resource "aws_ecr_repository" "api" {
-  name = "${local.name}-api"
-}
-
-resource "aws_ecr_repository" "worker" {
-  name = "${local.name}-worker"
-}
 
 # -------------------------
 # CloudWatch logs

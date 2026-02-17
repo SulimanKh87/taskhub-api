@@ -2,9 +2,14 @@ project    = "taskhub"
 env        = "dev"
 aws_region = "eu-central-1"
 
-# Images (set to YOUR ECR image URIs after you push)
-api_image    = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
-worker_image = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-worker:latest"
+# Images (BEFORE pushing to ECR, use placeholder)
+# AFTER pushing to ECR, update with real URIs from `terraform output`
+api_image    = "REPLACE_WITH_ECR_API_URL_FROM_TERRAFORM_OUTPUT"
+worker_image = "REPLACE_WITH_ECR_WORKER_URL_FROM_TERRAFORM_OUTPUT"
+
+# Example (after terraform apply):
+# api_image    = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
+# worker_image = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-worker:latest"
 
 # Secrets (DON'T commit real ones)
 jwt_secret  = "CHANGE_ME"
