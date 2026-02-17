@@ -59,3 +59,11 @@ override.tf.json
   #
   #No surprise upgrades
 !infra/terraform/.terraform.lock.hcl
+
+# ECR/Docker
+*.tar
+docker-compose.override.yml
+
+# Scripts temp files
+scripts/*.log
+scripts/temp/

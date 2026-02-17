@@ -38,6 +38,10 @@ taskhub-api/
 │       ├── test_tasks.py
 │       └── test_idempotency.py
 │
+├── infra/ecs-tasks/
+│  # Create infra/ecs-tasks/worker-task-definition.json
+│  # Create infra/ecs-tasks/api-task-definition.json
+│
 ├── infra/terraform/
 │   ├── main.tf
 │   ├── .terraform.lock.hcl
@@ -58,6 +62,11 @@ taskhub-api/
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
+│   ├── ECR.md
+│
+│
+├── scripts/
+│   └── push-to-ecr.sh
 │
 ├── pytest.ini
 ├── docker-compose.yml

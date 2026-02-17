@@ -112,6 +112,56 @@ Design goals:
 - Reproducible cloud environment
 - No secrets baked into images
 
+## 🐳 Container Registry (ECR)
+This project uses **AWS Elastic Container Registry (ECR)** to store Docker images.
+
+### 🚀 **Quick Start (AWS Deployment)**
+
+> ⚠️ **Cost Warning:** Running `terraform apply` creates real AWS resources and **will incur charges**.
+
+#### **Step 1: Create Infrastructure**
+```bash
+cd infra/terraform
+terraform init
+terraform plan    # Preview resources
+terraform apply   # Create resources (say 'yes')
+```
+
+#### **Step 2: Build & Push Docker Images to ECR**
+```bash
+cd ../../  # Back to project root
+./scripts/push-to-ecr.sh
+```
+
+#### **Step 3: Verify Images in ECR**
+```bash
+aws ecr describe-images --repository-name taskhub-dev-api --region eu-central-1
+aws ecr describe-images --repository-name taskhub-dev-worker --region eu-central-1
+```
+
+#### **Step 4: Update ECS Services**
+
+After images are in ECR, update `terraform.tfvars`:
+```hcl
+api_image    = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
+worker_image = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-worker:latest"
+```
+
+Then re-apply Terraform:
+```bash
+cd infra/terraform
+terraform apply
+```
+
+---
+
+### 📚 **Detailed Documentation**
+
+For complete ECR workflow and troubleshooting, see:
+- [`docs/ECR.md`](docs/ECR.md) — ECR push workflow
+- [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) — Full deployment guide (coming soon)
+
+---
 
 🗂 Project Structure
 ```text
