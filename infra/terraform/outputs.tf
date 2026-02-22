@@ -38,3 +38,34 @@ output "redis_endpoint" {
   value       = aws_elasticache_cluster.redis.cache_nodes[0].address
   description = "ElastiCache Redis endpoint (hostname)"
 }
+
+# Network outputs for migration script
+output "public_subnet_a_id" {
+  value       = aws_subnet.public_a.id
+  description = "Public subnet A ID"
+}
+
+output "public_subnet_b_id" {
+  value       = aws_subnet.public_b.id
+  description = "Public subnet B ID"
+}
+
+output "api_security_group_id" {
+  value       = aws_security_group.api.id
+  description = "API security group ID"
+}
+
+output "migration_task_family" {
+  value       = aws_ecs_task_definition.migration.family
+  description = "ECS task definition family for running Alembic migrations"
+}
+
+output "migration_task_arn" {
+  value       = aws_ecs_task_definition.migration.arn
+  description = "Full ARN of the migration task definition (includes revision)"
+}
+
+output "aws_region" {
+  value       = var.aws_region
+  description = "AWS region for all resources"
+}
