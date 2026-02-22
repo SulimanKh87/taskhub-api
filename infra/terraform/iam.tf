@@ -60,6 +60,14 @@ resource "aws_iam_role_policy" "task_role_policy" {
         ]
         Resource = "*"
       }
-    ]
+    ],
+      {
+        # EventBridge — lets app publish events
+        Effect = "Allow"
+        Action = [
+          "events:PutEvents"
+        ]
+        Resource = "arn:aws:events:${var.aws_region}:*:event-bus/default"
+      }
   })
 }

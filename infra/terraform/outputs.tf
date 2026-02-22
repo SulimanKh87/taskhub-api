@@ -69,3 +69,13 @@ output "aws_region" {
   value       = var.aws_region
   description = "AWS region for all resources"
 }
+
+output "lambda_function_name" {
+  value       = aws_lambda_function.resume_booster.function_name
+  description = "Lambda function name for resume booster"
+}
+
+output "eventbridge_rule_name" {
+  value       = aws_cloudwatch_event_rule.task_created.name
+  description = "EventBridge rule name for task created events"
+}

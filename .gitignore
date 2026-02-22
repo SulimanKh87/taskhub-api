@@ -68,3 +68,6 @@ docker-compose.override.yml
 scripts/*.log
 scripts/temp/aws/
 awscliv2.zip
+
+# Lambda artifacts
+infra/terraform/lambda_function.zip
