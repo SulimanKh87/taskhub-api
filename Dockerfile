@@ -34,6 +34,16 @@ ENV PYTHONUNBUFFERED=1
 # Set working directory inside the container
 WORKDIR /app
 
+# ==========================
+# Install system dependencies
+# ==========================
+# curl: required for ECS container health checks
+# ca-certificates: required for HTTPS connections
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 # Copy dependency list first (to leverage Docker caching)
 COPY requirements.txt .
 
