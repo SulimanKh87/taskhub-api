@@ -8,8 +8,8 @@
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
 > **Version:** 2.0.0  
-> **Status:** Production-grade backend (SQL)  
-> **Release Type:** Storage-layer migration (MongoDB → PostgreSQL)
+> **Status:** Production-grade backend with event-driven Lambda  
+> **Release Type:** AWS infrastructure + serverless integration
 
 > ⚠️ **SQL Branch**
 >
@@ -59,21 +59,37 @@ The goal of this project is to demonstrate real backend engineering, not just CR
 - Database schema migrations with Alembic
 - Clean separation between API, domain, and persistence layers
 
-## 🧱 System Architecture no AWS 
+## 🧱 System Architecture (AWS)
 ```text
-Client
+Internet
   │
   ▼
-Application Load Balancer (AWS)
+Application Load Balancer (port 80)
   │
-  ▼
-ECS Fargate
-  ├── FastAPI API container
-  └── Celery worker container
+  ├─> ECS Fargate API (port 8000)
+  │     │
+  │     ├─> RDS PostgreSQL (private subnet)
+  │     └─> ElastiCache Redis (private subnet)
+  │
+  ├─> ECS Fargate Worker (Celery)
+  │     │
+  │     ├─> RDS PostgreSQL (private subnet)
+  │     └─> ElastiCache Redis (private subnet)
+  │
+  └─> EventBridge
         │
-        ├── RDS PostgreSQL (private subnet)
-        └── ElastiCache Redis (private subnet)
+        └─> Lambda (Resume Booster)
+              └─> CloudWatch Logs
 ```
+
+**Key Components:**
+- **ALB**: Public-facing load balancer with `/health` checks
+- **ECS Fargate**: Serverless containers for API and worker
+- **RDS PostgreSQL**: Managed database (private subnet)
+- **ElastiCache Redis**: Managed cache/broker (private subnet)
+- **Lambda**: Event-driven task processing
+- **EventBridge**: Event routing (task_created events)
+- 
 📐 Architecture & Operational Guarantees (Current State)
 
 This project documents **only the systems and guarantees that currently exist**.
@@ -92,19 +108,67 @@ This project includes a complete Infrastructure-as-Code setup using Terraform.
 
 Provisioned resources:
 
-- VPC with public & private subnets
+**Networking:**
+- VPC with public & private subnets (multi-AZ)
+- Internet Gateway
+- Security groups (ALB, API, worker, DB, Redis)
+
+**Compute:**
 - Application Load Balancer (ALB)
 - ECS Fargate cluster
-- API service + Celery worker service
-- RDS PostgreSQL (private subnet)
-- ElastiCache Redis (private subnet)
-- ECR repositories (API + worker)
-- CloudWatch log groups
-- Least-privilege security groups
+- API service (desired_count=1)
+- Celery worker service (desired_count=1)
+- Lambda function (Resume Booster)
+
+**Data:**
+- RDS PostgreSQL (db.t4g.micro, private subnet)
+- ElastiCache Redis (cache.t4g.micro, private subnet)
+
+**Events & Logs:**
+- EventBridge rule (task_created)
+- CloudWatch log groups (API, worker, Lambda, migrations)
+
+**Container Registry:**
+- ECR repositories (API + worker images)
+
+**IAM:**
+- ECS task execution role
+- ECS task role (with EventBridge permissions)
+- Lambda execution role
+
+### Event-Driven Architecture
+
+TaskHub uses **EventBridge + Lambda** for event-driven processing:
+
+**Flow:**
+1. User creates task via API (`POST /tasks`)
+2. API publishes `TaskCreated` event to EventBridge
+3. EventBridge triggers Lambda function
+4. Lambda logs task details to CloudWatch
+
+**Benefits:**
+- Decoupled architecture (API doesn't wait for Lambda)
+- Automatic retries (EventBridge handles failures)
+- Scalable event processing (Lambda auto-scales)
+
+**Current Lambda:** Resume Booster (logs task creation)  
+**Future:** Resume parsing, keyword extraction, suggestions
 
 Infrastructure is defined in:
 
+Infrastructure files:
+```markdown
 infra/terraform/
+├── main.tf           # VPC, subnets, SGs, RDS, Redis, ALB
+├── ecs.tf            # ECS cluster, task definitions, services
+├── iam.tf            # IAM roles (execution + task)
+├── ecr.tf            # ECR repos + lifecycle policies
+├── lambda.tf         # Lambda + EventBridge integration
+├── migration-task.tf # Alembic migration task
+├── variables.tf      # Input variables
+├── outputs.tf        # Resource outputs
+└── provider.tf       # AWS provider config
+```
 
 Design goals:
 - Mid-level backend learning setup
@@ -477,6 +541,43 @@ until the migration is finalized.
 
 ## 📝 Release Notes
 
+### 🔹 v2.2.0 — AWS Cloud Deployment (Current)
+
+**Release Type:** Minor (Infrastructure)  
+**Release Date:** February 2026
+
+#### ✅ Added
+
+**Milestone 4 — ALB Public Routing:**
+- Application Load Balancer with HTTP listener
+- Target group with `/health` health checks
+- Public internet access to API via ALB DNS
+
+**Milestone 5 — Managed Data Services:**
+- RDS PostgreSQL (db.t4g.micro, private subnet)
+- ElastiCache Redis (cache.t4g.micro, private subnet)
+- ECS migration task definition for Alembic
+- Automated migration script (`scripts/run-migrations.sh`)
+
+**Milestone 6 — Event-Driven Lambda:**
+- AWS Lambda function (Resume Booster)
+- EventBridge rule for `TaskCreated` events
+- ECS task role with `events:PutEvents` permission
+- API publishes events after task creation (production only)
+
+#### 🔄 Changed
+- Environment variables now point to RDS and ElastiCache (not local Docker)
+- Docker Compose remains for local development
+- API task definition includes boto3 for EventBridge client
+
+#### 🛡 Infrastructure
+- All services in private subnets except ALB
+- Security groups restrict access (least privilege)
+- CloudWatch logging for all services
+- IAM roles follow principle of least privilege
+
+---
+
 ### 🔹 v2.0.0 — PostgreSQL Edition (Current)
 
 **Release Type:** Major (Storage-layer migration)  
@@ -540,6 +641,6 @@ until the migration is finalized.
 
 
 📄 License
-MIT License © 2025
+MIT License © 2025-2026
 Suleiman Khasheboun
 Backend Software Engineer | FastAPI · PostgreSQL · Celery · Docker
