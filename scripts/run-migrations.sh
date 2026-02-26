@@ -11,7 +11,7 @@ set -e
 cd infra/terraform
 REGION=$(terraform output -raw aws_region 2>/dev/null || echo "eu-central-1")
 CLUSTER=$(terraform output -raw ecs_cluster_name)
-TASK_DEF=$(terraform output -raw migration_task_family)
+TASK_DEF=$(terraform output -raw migration_task_arn) # Runs exact revision that Terraform created but using migration_task_family will update the version everytime
 cd ../..
 
 echo "🗄️  Running Alembic migrations on ECS..."
