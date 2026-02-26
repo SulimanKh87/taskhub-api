@@ -13,6 +13,7 @@ from datetime import datetime
 import json
 import os
 import boto3
+from app.events import publish_task_created
 
 from fastapi import (
     APIRouter,
@@ -98,22 +99,11 @@ async def create_task(
     await db.commit()
 
     # Publish event to EventBridge (only in production)
-    if os.getenv("ENV") == "prod":
-        try:
-            events_client = boto3.client('events', region_name=os.getenv("AWS_REGION", "eu-central-1"))
-            events_client.put_events(
-                Entries=[{
-                    'Source': 'taskhub.api',
-                    'DetailType': 'TaskCreated',
-                    'Detail': json.dumps({
-                        'task_id': new_task.id,
-                        'task_title': new_task.title,
-                        'owner': user.username
-                    })
-                }]
-            )
-        except Exception as e:
-            print(f"Failed to publish TaskCreated event: {e}")
+    publish_task_created(
+        task_id=new_task.id,
+        task_title=new_task.title,
+        owner=user.username,
+    )
     return TaskResponse(
         id=new_task.id,
         title=new_task.title,
