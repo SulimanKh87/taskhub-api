@@ -50,6 +50,7 @@ taskhub-api/
 │       ├── variables.tf
 │       ├── outputs.tf
 │       ├── provider.tf
+│       ├── migration-task.tf
 │       └── .terraform.lock.hcl
 │
 ├── alembic/
@@ -66,7 +67,8 @@ taskhub-api/
 │
 │
 ├── scripts/
-│   └── push-to-ecr.sh
+│   ├── push-to-ecr.sh
+│   ├── run-migrations.sh
 │
 ├── pytest.ini
 ├── docker-compose.yml
