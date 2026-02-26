@@ -7,6 +7,7 @@ taskhub-api/
 │   ├── config.py                 # Environment & settings
 │   ├── db.py                     # Async SQLAlchemy engine & session
 │   ├── security.py               # Password hashing + JWT helpers
+│   ├── events.py                 # EventBridge publisher helpers (prod-only)
 │   ├── idempotency.py            # SQL-backed idempotent job helpers
 │   │
 │   ├── routes/
@@ -51,6 +52,7 @@ taskhub-api/
 │       ├── outputs.tf
 │       ├── provider.tf
 │       ├── migration-task.tf
+│       ├── lambda.tf                      # EventBridge rule + Lambda (resume booster)
 │       └── .terraform.lock.hcl
 │
 ├── alembic/

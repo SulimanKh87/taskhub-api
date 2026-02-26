@@ -40,6 +40,10 @@ env/
 # Terraform
 **/.terraform/
 infra/terraform/terraform.tfvars
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.backup
+infra/terraform/lambda_function.zip
 # Terraform state
 *.tfstate
 *.tfstate.*
