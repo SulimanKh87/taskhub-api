@@ -44,6 +44,7 @@ infra/terraform/.terraform/
 infra/terraform/*.tfstate
 infra/terraform/*.tfstate.backup
 infra/terraform/lambda_function.zip
+
 # Terraform state
 *.tfstate
 *.tfstate.*
@@ -52,16 +53,8 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+
 # Keep Terraform lock file tracked
-# Tracking .terraform.lock.hcl ensures:
-  #
-  #Same provider version for everyone
-  #
-  #Reproducible infrastructure
-  #
-  #Stable CI pipelines
-  #
-  #No surprise upgrades
 !infra/terraform/.terraform.lock.hcl
 
 # ECR/Docker
@@ -73,5 +66,3 @@ scripts/*.log
 scripts/temp/aws/
 awscliv2.zip
 
-# Lambda artifacts
-infra/terraform/lambda_function.zip
