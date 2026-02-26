@@ -7,9 +7,9 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-> **Version:** 2.0.0  
-> **Status:** Production-grade backend with event-driven Lambda  
-> **Release Type:** AWS infrastructure + serverless integration
+> **Version:** 2.2.0  
+> **Status:** Production-grade + AWS infrastructure  
+> **AWS:** Optional (defer to save costs)
 
 > ⚠️ **SQL Branch**
 >
@@ -135,6 +135,49 @@ Provisioned resources:
 - ECS task execution role
 - ECS task role (with EventBridge permissions)
 - Lambda execution role
+
+---
+
+## 🚀 Getting Started
+
+### Local Development (No AWS Costs)
+```bash
+# 1. Clone repo
+git clone <repo-url>
+cd taskhub-api
+
+# 2. Setup environment
+cp .env.example .env
+
+# 3. Start services
+docker compose up --build
+
+# 4. Test
+curl http://localhost:8000/health
+```
+
+### AWS Deployment (⚠️ ~$73/month)
+```bash
+# 1. Configure AWS
+aws configure
+
+# 2. Deploy infrastructure
+cd infra/terraform
+terraform init
+terraform apply
+
+# 3. Push images
+cd ../..
+./scripts/push-to-ecr.sh
+
+# 4. Run migrations
+./scripts/run-migrations.sh
+
+# 5. Cleanup when done
+terraform destroy
+```
+
+---
 
 ### Event-Driven Architecture
 
@@ -522,6 +565,14 @@ Alembic migrations
 Relational integrity
 Schema-enforced idempotency
 
+### 🔹 v2.2.0 — AWS Infrastructure (Current)
+**Added:**
+- Milestone 4: ALB public routing
+- Milestone 5: RDS + ElastiCache + migrations
+- Milestone 6: Lambda + EventBridge
+**Cost:** ~$73/month (or $0 if not deployed)
+
+---
 🎯 Design Philosophy
 This project demonstrates:
 Backend correctness over convenience
