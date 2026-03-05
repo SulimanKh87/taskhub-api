@@ -583,6 +583,49 @@ ensuring both implementations remain correct and isolated
 until the migration is finalized.
 
 ## 📝 Release Notes
+### 🔹 v2.4.0 — Production Hardening (Current)
+
+**Release Type:** Minor (Security & Reliability)  
+**Release Date:** March 2026
+
+#### ✅ Added
+
+**Milestone 8 — Production Hardening:**
+
+**Secrets Management:**
+- AWS Secrets Manager for DB password and JWT secret
+- No secrets hardcoded in infrastructure
+- ECS tasks retrieve secrets at runtime
+- IAM policies for least-privilege secret access
+
+**Monitoring & Alerting:**
+- CloudWatch alarms for CPU, memory, 5xx errors
+- SNS email notifications for critical events
+- Unhealthy target detection
+- RDS storage and CPU monitoring
+
+**Autoscaling:**
+- ECS autoscaling based on CPU utilization (70% target)
+- Memory-based autoscaling (70% target)
+- Request count scaling (1000 req/min per task)
+- Scale: 1-4 tasks automatically
+
+**Security Headers:**
+- OWASP-recommended HTTP headers
+- X-Content-Type-Options, X-Frame-Options
+- Strict-Transport-Security (HSTS)
+- XSS Protection headers
+
+#### 🛡 Production Features
+- Proactive monitoring (detect issues before users)
+- Auto-recovery from load spikes
+- Secure credential management
+- Defense-in-depth security posture
+
+**Interview Story:** "Our system scales automatically under load, monitors critical metrics, stores secrets securely, and follows OWASP security standards."
+
+---
+
 ### 🔹 v2.3.0 — CI/CD Pipeline (Current)
 
 **Release Type:** Minor (Automation)  
