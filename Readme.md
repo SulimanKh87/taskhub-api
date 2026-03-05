@@ -7,7 +7,7 @@
 ![Docker](https://img.shields.io/badge/Docker-Compose-blue)
 ![License](https://img.shields.io/badge/License-MIT-yellow)
 
-> **Version:** 2.2.0  
+> **Version:** 2.3.0  
 > **Status:** Production-grade + AWS infrastructure  
 > **AWS:** Optional (defer to save costs)
 
@@ -565,14 +565,6 @@ Alembic migrations
 Relational integrity
 Schema-enforced idempotency
 
-### 🔹 v2.2.0 — AWS Infrastructure (Current)
-**Added:**
-- Milestone 4: ALB public routing
-- Milestone 5: RDS + ElastiCache + migrations
-- Milestone 6: Lambda + EventBridge
-**Cost:** ~$73/month (or $0 if not deployed)
-
----
 🎯 Design Philosophy
 This project demonstrates:
 Backend correctness over convenience
@@ -591,6 +583,88 @@ ensuring both implementations remain correct and isolated
 until the migration is finalized.
 
 ## 📝 Release Notes
+### 🔹 v2.3.0 — CI/CD Pipeline (Current)
+
+**Release Type:** Minor (Automation)  
+**Release Date:** March 2026
+
+#### ✅ Added
+
+**Milestone 7 — CI/CD Pipeline:**
+- GitHub Actions automated deployment workflow
+- Test job: pytest + black + ruff (PostgreSQL + Redis)
+- Terraform validation job: format check + validate
+- Deploy job: Build → ECR → ECS (only on push to sql-aws)
+- Dual image tagging (git SHA + latest) for rollback capability
+
+#### 🔄 Deployment Flow
+```
+Push to sql-aws → Tests → Terraform Validate → Build Images → Push to ECR → Deploy to ECS → Wait for Stable
+```
+
+#### 🛡 Pipeline Features
+- Conditional deployment (PRs don't deploy)
+- Job dependencies (test + terraform must pass)
+- ECS force-new-deployment with services-stable wait
+- Dual-backend CI support (MongoDB on main, PostgreSQL on sql-aws)
+
+**Result:** One-command deployment via `git push origin sql-aws`
+
+---
+### Pipeline Flow
+```
+Push to sql-aws
+  ↓
+Run Tests (pytest + linting)
+  ↓
+Validate Terraform (fmt + validate)
+  ↓
+Build Docker Images
+  ↓
+Push to ECR (git SHA + latest tags)
+  ↓
+Deploy to ECS (API + Worker)
+  ↓
+Wait for Services Stable
+  ↓
+✅ Deployed to AWS
+```
+
+### Trigger Deployment
+```bash
+# Make code changes
+git add .
+git commit -m "feat: add new feature"
+
+# Push to sql-aws
+git push origin sql-aws
+
+# GitHub Actions automatically deploys to AWS
+```
+
+### Monitor Deployment
+
+**GitHub Actions:**
+- Go to: **Actions** tab in GitHub repo
+- Watch real-time deployment progress
+
+**AWS ECS:**
+```bash
+aws ecs describe-services \
+  --cluster taskhub-dev-cluster \
+  --services taskhub-dev-api taskhub-dev-worker \
+  --region eu-central-1
+```
+
+### Required GitHub Secrets
+
+Add in **Settings → Secrets → Actions**:
+```
+AWS_ACCESS_KEY_ID
+AWS_SECRET_ACCESS_KEY
+```
+
+---
 
 ### 🔹 v2.2.0 — AWS Cloud Deployment (Current)
 
