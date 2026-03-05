@@ -1,4 +1,4 @@
-name: CI - TaskHub API
+name: CI/CD - PostgreSQL API
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - "**"
   pull_request:
     branches:
-      - "**"
+      - "sql-aws"
 
 jobs:
   test:
@@ -15,26 +15,9 @@ jobs:
     env:
       ENV: test
       PYTHONPATH: ${{ github.workspace }}
-      # Branch-aware backend selection
-      BACKEND: ${{ (github.ref == 'refs/heads/main-sql' || github.base_ref == 'main-sql') && 'postgres' || 'mongo' }}
 
 
     services:
-      # ----------------------------
-      # MongoDB (main branch)
-      # ----------------------------
-      mongo:
-        image: mongo:7
-        ports:
-          - 27017:27017
-        options: >-
-          --health-cmd="mongosh --eval 'db.runCommand({ ping: 1 })'"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-        # if: env.BACKEND == 'mongo'  # NOTE: GitHub Actions does not support 'if' under services
-
-
       # ----------------------------
       # PostgreSQL (main-sql branch)
       # ----------------------------
@@ -103,17 +86,7 @@ jobs:
           echo "JWT_ALGORITHM=HS256" >> .env
           echo "JWT_EXPIRE_MINUTES=30" >> .env
           echo "REDIS_BROKER=redis://localhost:6379/0" >> .env
-
-
-          if [ "$BACKEND" = "mongo" ]; then
-            echo "MONGODB_URI=mongodb://localhost:27017" >> .env
-            echo "MONGODB_DB=test_db" >> .env
-          else
-            echo "DATABASE_URL=postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub" >> .env
-          fi
-
-      - name: Show backend mode
-        run: echo "🧪 Running CI with BACKEND=$BACKEND"
+          echo "DATABASE_URL=postgresql+asyncpg://taskhub:taskhub@localhost:5432/taskhub" >> .env
 
       # ----------------------------
       # Tests (Celery mocked)
