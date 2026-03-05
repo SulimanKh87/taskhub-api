@@ -1,4 +1,4 @@
-# 🚀 TaskHub API — PostgreSQL Edition (v2.0)
+# 🚀 TaskHub API — PostgreSQL Edition (v2.3)
 
 ![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
