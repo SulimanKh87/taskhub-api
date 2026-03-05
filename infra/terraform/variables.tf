@@ -191,7 +191,7 @@ variable "autoscaling_min_capacity" {
 variable "autoscaling_max_capacity" {
   description = "Maximum number of ECS tasks"
   type        = number
-  default     = 4
+  default     = 2 # 2 instead of 4 for lower costs and learning purpose
 }
 
 variable "autoscaling_cpu_target" {
