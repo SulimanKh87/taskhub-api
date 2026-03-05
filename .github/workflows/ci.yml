@@ -121,8 +121,6 @@ jobs:
       - name: Run tests
         run: |
           pytest -v app/tests --disable-warnings
-      - name: Build image (CI)
-        run: docker build -t taskhub:${{ github.sha }} .
 
 # ===========================================
   # Job 2: Terraform Validation
@@ -158,6 +156,9 @@ jobs:
     needs: [test, terraform]
 
     if: github.event_name == 'push' && github.ref == 'refs/heads/sql-aws'
+    concurrency:
+      group: deploy-sql-aws
+      cancel-in-progress: true
 
     steps:
       - name: Checkout code
@@ -195,6 +196,8 @@ jobs:
           docker push $ECR_REGISTRY/taskhub-dev-worker:latest
 
       - name: Deploy to ECS
+        env:
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           # Update API service
           aws ecs update-service \
