@@ -50,7 +50,7 @@ resource "aws_iam_role_policy" "task_role_policy" {
     Version = "2012-10-17"
     Statement = [
       {
-        # ECS Exec — lets you shell into running containers for debugging
+        # ECS Exec
         Effect = "Allow"
         Action = [
           "ssmmessages:CreateControlChannel",
@@ -59,15 +59,36 @@ resource "aws_iam_role_policy" "task_role_policy" {
           "ssmmessages:OpenDataChannel"
         ]
         Resource = "*"
-      }
-    ],
+      },  # ← Fixed: comma INSIDE array
       {
-        # EventBridge — lets app publish events
+        # EventBridge
         Effect = "Allow"
         Action = [
           "events:PutEvents"
         ]
         Resource = "arn:aws:events:${var.aws_region}:*:event-bus/default"
       }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy" "task_secrets_policy" {
+  name = "${local.name}-task-secrets-policy"
+  role = aws_iam_role.task_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          aws_secretsmanager_secret.db_password.arn,
+          aws_secretsmanager_secret.jwt_secret.arn
+        ]
+      }
+    ]
   })
 }

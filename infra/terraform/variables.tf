@@ -156,3 +156,46 @@ variable "log_retention_days" {
   type        = number
   default     = 7
 }
+
+
+# -------------------------
+# Monitoring
+# -------------------------
+variable "alarm_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+  default     = "your-email@example.com"
+}
+
+variable "cpu_alarm_threshold" {
+  description = "CPU threshold for alarms (%)"
+  type        = number
+  default     = 80
+}
+
+variable "memory_alarm_threshold" {
+  description = "Memory threshold for alarms (%)"
+  type        = number
+  default     = 80
+}
+
+# -------------------------
+# Autoscaling
+# -------------------------
+variable "autoscaling_min_capacity" {
+  description = "Minimum number of ECS tasks"
+  type        = number
+  default     = 1
+}
+
+variable "autoscaling_max_capacity" {
+  description = "Maximum number of ECS tasks"
+  type        = number
+  default     = 4
+}
+
+variable "autoscaling_cpu_target" {
+  description = "Target CPU utilization for autoscaling (%)"
+  type        = number
+  default     = 70
+}

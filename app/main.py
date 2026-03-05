@@ -1,5 +1,4 @@
 # app/main.py
-
 """
 FastAPI application entrypoint.
 
@@ -14,10 +13,27 @@ Database connections are handled lazily via SQLAlchemy sessions.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
 
 from app.config import settings
 from app.routes import auth, tasks
 
+# SecurityHeadersMiddleware class
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add OWASP-recommended security headers to all responses."""
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+
+        # Security headers
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+
+        return response
 
 # ------------------------------------------------------------
 # Application setup
@@ -44,6 +60,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
 
 # ------------------------------------------------------------
 # Routers
