@@ -123,3 +123,97 @@ jobs:
           pytest -v app/tests --disable-warnings
       - name: Build image (CI)
         run: docker build -t taskhub:${{ github.sha }} .
+
+# ===========================================
+  # Job 2: Terraform Validation
+  # ===========================================
+  terraform:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra/terraform
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.6.0"
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Init
+        run: terraform init -backend=false
+
+      - name: Terraform Validate
+        run: terraform validate
+
+  # ===========================================
+  # Job 3: Deploy (only on push to sql-aws)
+  # ===========================================
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [test, terraform]
+
+    if: github.event_name == 'push' && github.ref == 'refs/heads/sql-aws'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-central-1
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push images to ECR
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          # Build image
+          docker build -t taskhub-api:$IMAGE_TAG .
+          
+          # Tag for ECR (API and Worker use same image)
+          docker tag taskhub-api:$IMAGE_TAG $ECR_REGISTRY/taskhub-dev-api:$IMAGE_TAG
+          docker tag taskhub-api:$IMAGE_TAG $ECR_REGISTRY/taskhub-dev-api:latest
+          docker tag taskhub-api:$IMAGE_TAG $ECR_REGISTRY/taskhub-dev-worker:$IMAGE_TAG
+          docker tag taskhub-api:$IMAGE_TAG $ECR_REGISTRY/taskhub-dev-worker:latest
+          
+          # Push to ECR
+          docker push $ECR_REGISTRY/taskhub-dev-api:$IMAGE_TAG
+          docker push $ECR_REGISTRY/taskhub-dev-api:latest
+          docker push $ECR_REGISTRY/taskhub-dev-worker:$IMAGE_TAG
+          docker push $ECR_REGISTRY/taskhub-dev-worker:latest
+
+      - name: Deploy to ECS
+        run: |
+          # Update API service
+          aws ecs update-service \
+            --cluster taskhub-dev-cluster \
+            --service taskhub-dev-api \
+            --force-new-deployment \
+            --region eu-central-1
+          
+          # Update Worker service
+          aws ecs update-service \
+            --cluster taskhub-dev-cluster \
+            --service taskhub-dev-worker \
+            --force-new-deployment \
+            --region eu-central-1
+          
+          # Wait for deployments to stabilize
+          aws ecs wait services-stable \
+            --cluster taskhub-dev-cluster \
+            --services taskhub-dev-api taskhub-dev-worker \
+            --region eu-central-1
+          
+          echo "✅ Deployed: API + Worker with image $IMAGE_TAG"
