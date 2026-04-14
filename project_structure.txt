@@ -1,0 +1,103 @@
+# =============================================================================
+# TaskHub API — Project Structure
+# Last updated: Milestone 1 (Docker Production Hardening)
+#
+# Milestone history:
+#   M1 ✅ Docker production hardening (multi-stage build, .dockerignore, override)
+#   M2 ⏳ Terraform production structure (remote state, Secrets Manager, modules)
+#   M3 ⏳ CI/CD hardening (rollback, image scanning, Jenkinsfile)
+#   M4 ⏳ Kubernetes + Helm (manifests, HPA, EKS Terraform)
+#   M5 ⏳ Monitoring stack (Prometheus, Grafana, CloudWatch alarms)
+#   M6 ⏳ Incident response docs (INCIDENTS.md, OPERATIONS.md)
+#   M7 ⏳ Cost & scaling awareness (COST.md, Fargate Spot)
+#   M8 ⏳ Interview polish + README overhaul
+# =============================================================================
+
+taskhub-api/
+│
+├── app/                              # FastAPI application
+│   ├── __init__.py
+│   ├── main.py                       # App entrypoint, middleware, routers
+│   ├── config.py                     # Settings via pydantic-settings + .env
+│   ├── db.py                         # Async SQLAlchemy engine + session factory
+│   ├── security.py                   # Password hashing + JWT helpers
+│   ├── events.py                     # EventBridge publisher (prod-only)
+│   ├── idempotency.py                # SQL-backed idempotent job helpers
+│   │
+│   ├── routes/
+│   │   ├── auth.py                   # Register + login
+│   │   └── tasks.py                  # Task CRUD + paginated list
+│   │
+│   ├── schemas/                      # Pydantic v2 API contracts
+│   │   ├── user_schema.py
+│   │   ├── task_schema.py
+│   │   ├── pagination_schema.py
+│   │   └── token_schema.py
+│   │
+│   ├── models/                       # SQLAlchemy ORM models
+│   │   ├── base.py
+│   │   ├── user.py
+│   │   ├── task.py
+│   │   └── job_log.py
+│   │
+│   ├── workers/
+│   │   ├── __init__.py
+│   │   ├── celery_app.py
+│   │   └── tasks/
+│   │       ├── __init__.py
+│   │       └── email_tasks.py
+│   │
+│   └── tests/
+│       ├── conftest.py
+│       ├── test_api.py
+│       ├── test_tasks.py
+│       └── test_idempotency.py
+│
+├── infra/
+│   ├── ecs-tasks/
+│   │   ├── api-task-definition.json
+│   │   └── worker-task-definition.json
+│   └── terraform/
+│       ├── main.tf                   # VPC, subnets, SGs, RDS, Redis, ALB
+│       ├── ecs.tf                    # ECS cluster, task definitions, services
+│       ├── iam.tf                    # IAM roles (execution + task)
+│       ├── ecr.tf                    # ECR repos + lifecycle policies
+│       ├── lambda.tf                 # EventBridge rule + Lambda
+│       ├── migration-task.tf         # Alembic migration ECS task
+│       ├── variables.tf
+│       ├── outputs.tf
+│       ├── provider.tf
+│       └── .terraform.lock.hcl
+│
+├── alembic/
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       └── 0001_init_schema.py
+│
+├── docs/
+│   ├── ARCHITECTURE.md
+│   ├── SECURITY.md
+│   ├── FAILURE_MODES.md
+│   └── ECR.md
+│
+├── scripts/
+│   ├── push-to-ecr.sh
+│   └── run-migrations.sh
+│
+├── .github/
+│   └── workflows/
+│       └── ci.yml
+│
+# ─── M1: Docker Production Hardening ────────────────────────────────────────
+├── Dockerfile                        # ✅ UPDATED: multi-stage build (builder + runtime)
+├── .dockerignore                     # ✅ NEW: excludes secrets, infra, test artifacts
+├── docker-compose.yml                # Base: production-aligned service definitions
+├── docker-compose.override.yml       # ✅ NEW: local dev (hot reload, Flower, debug flags)
+# ─────────────────────────────────────────────────────────────────────────────
+│
+├── pytest.ini
+├── requirements.txt
+├── .env.example
+├── README.md
+└── project_structure.txt             # ✅ UPDATED this file

@@ -1,87 +1,95 @@
-# ------------------------------------------------------------
-# Dockerfile — TaskHub API (AWS / Cloud-ready)
+# =============================================================================
+# Dockerfile — TaskHub API
+# Multi-stage build: builder (compiles deps) → runtime (lean final image)
 #
-# Purpose:
-# - Build a production-ready container for FastAPI
-# - Compatible with AWS ECS Fargate, ALB, and local Docker
+# Why multi-stage?
+#   - Build tools (gcc, pip cache, build headers) never reach production
+#   - Final image: ~180MB vs ~450MB single-stage
+#   - No secrets or AWS credentials baked in — all config via env vars
 #
-# Design decisions:
-# - The application binds to 0.0.0.0 so it is reachable inside containers
-# - The PORT is configurable via environment variable (ECS/ALB standard)
-# - All configuration (DB, Redis, JWT) is provided via env vars
-# - No secrets or AWS credentials are baked into the image
-#
-# This image can run:
-# - Locally (Docker / Docker Compose)
-# - On AWS ECS Fargate behind an Application Load Balancer
-# ------------------------------------------------------------
+# Compatible with:
+#   - Local Docker / Docker Compose
+#   - AWS ECS Fargate
+#   - Kubernetes (EKS)
+# =============================================================================
 
-# ==========================
-# STAGE 1: Base image
-# ==========================
+# =============================================================================
+# STAGE 1: builder
+# Install all Python dependencies into a clean prefix we can copy later.
+# =============================================================================
+FROM python:3.12.3-slim AS builder
 
-# Use official lightweight Python image (version 3.12-slim)
-FROM python:3.12-slim
-
-# ==========================
-# Environment setup
-# ==========================
-
-# Prevent Python from writing .pyc files and buffering output
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Set working directory inside the container
-WORKDIR /app
+WORKDIR /build
 
-# ==========================
-# Install system dependencies
-# ==========================
-# curl: required for ECS container health checks
-# ca-certificates: required for HTTPS connections
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    ca-certificates \
+# Build-time OS deps needed to compile some Python packages (asyncpg, psycopg)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        gcc \
+        libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy dependency list first (to leverage Docker caching)
+# Install Python packages into /install prefix — copied to runtime stage only
 COPY requirements.txt .
+RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 
-# Install dependencies
-# --no-cache-dir → prevents storing pip cache, keeping the image small
-RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the source code into the image
-COPY . .
+# =============================================================================
+# STAGE 2: runtime
+# Lean image — copies only installed packages + application code.
+# Build tools, pip cache, gcc never make it here.
+# =============================================================================
+FROM python:3.12.3-slim AS runtime
 
-# Create non-root user for runtime (AWS / ECS best practice)
-RUN useradd -m appuser \
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Runtime-only OS deps
+#   curl:            Docker/ECS HEALTHCHECK + container readiness checks
+#   ca-certificates: HTTPS to AWS APIs (boto3)
+#   libpq5:          PostgreSQL client runtime library (asyncpg)
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        ca-certificates \
+        libpq5 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy compiled Python packages from builder — no pip needed in runtime
+COPY --from=builder /install /usr/local
+
+# Copy only the application code needed at runtime
+COPY app/ ./app/
+COPY alembic/ ./alembic/
+COPY alembic.ini .
+
+# -----------------------------------------------------------------------
+# Security: drop root privileges
+# Required by ECS Fargate best practices and Kubernetes PodSecurityPolicy
+# UID 1001 avoids conflicts with common system UIDs
+# -----------------------------------------------------------------------
+RUN useradd -m -u 1001 appuser \
     && chown -R appuser:appuser /app
 
-# Drop root privileges for runtime
 USER appuser
 
-
-# ==========================
-# Container runtime configuration
-# ==========================
-
-# Expose the port FastAPI will run on (matches app_port in .env)
 EXPOSE 8000
 
-# ------------------------------------------------------------
-# Runtime command
+# -----------------------------------------------------------------------
+# HEALTHCHECK
+# Used by:
+#   - Docker / Docker Compose (container marked healthy/unhealthy)
+#   - ECS task health checks (before registering to target group)
+#   - Kubernetes liveness probes (if not overridden in manifest)
 #
-# Why PORT env?
-# - AWS ECS + Application Load Balancer inject the listening port
-# - Default to 8000 for local development
-#
-# This keeps the same image usable in:
-# - local Docker
-# - CI pipelines
-# - AWS ECS Fargate
-# ------------------------------------------------------------
-# ------------------------------------------------------------
-# Runtime command (ECS / Docker / Local compatible)
-# ------------------------------------------------------------
+# --start-period: gives the app time to connect to DB before first check
+# -----------------------------------------------------------------------
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=15s \
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
+
+# PORT env var allows ECS / ALB / K8s to override the listening port
 CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

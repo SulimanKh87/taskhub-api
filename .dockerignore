@@ -1,0 +1,98 @@
+# =============================================================================
+# .dockerignore — TaskHub API
+#
+# Excludes files/dirs that should NEVER enter the Docker image:
+#   - Secrets (.env files)
+#   - Infrastructure code (Terraform, K8s — not needed at runtime)
+#   - Development/test artifacts
+#   - Version control metadata
+#
+# Rule: if it's not needed to RUN the app, it's excluded here.
+# Result: smaller image, faster build, no accidental secret leaks.
+# =============================================================================
+
+# -------------------------
+# Secrets — NEVER in image
+# -------------------------
+.env
+.env.*
+!.env.example
+*.env.local
+
+# -------------------------
+# Python artifacts
+# -------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.cache/
+htmlcov/
+.coverage
+coverage.xml
+*.egg-info/
+dist/
+build/
+
+# -------------------------
+# Infrastructure — not needed at runtime
+# -------------------------
+infra/
+k8s/
+helm/
+monitoring/
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars
+!terraform.tfvars.example
+
+# -------------------------
+# CI/CD
+# -------------------------
+.github/
+Jenkinsfile
+
+# -------------------------
+# Development tooling
+# -------------------------
+docker-compose*.yml
+Makefile
+.dockerignore
+
+# -------------------------
+# Documentation
+# -------------------------
+docs/
+*.md
+!README.md
+
+# -------------------------
+# Version control
+# -------------------------
+.git/
+.gitignore
+
+# -------------------------
+# IDE / editor
+# -------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# -------------------------
+# Logs
+# -------------------------
+*.log
+logs/
+
+# -------------------------
+# Scripts (only used for ops, not app runtime)
+# -------------------------
+scripts/
