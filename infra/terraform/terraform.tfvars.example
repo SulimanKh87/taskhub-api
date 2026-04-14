@@ -1,20 +1,43 @@
-project    = "taskhub"
-env        = "dev"
-aws_region = "eu-central-1"
+# =============================================================================
+# terraform.tfvars.example — Example variable values
+#
+# Copy to terraform.tfvars and fill in real values:
+#   cp terraform.tfvars.example terraform.tfvars
+#
+# NEVER commit terraform.tfvars — it contains real secrets.
+# terraform.tfvars is in .gitignore.
+# Only this .example file is committed.
+# =============================================================================
 
-# Images (BEFORE pushing to ECR, use placeholder)
-# AFTER pushing to ECR, update with real URIs from `terraform output`
-api_image    = "REPLACE_WITH_ECR_API_URL_FROM_TERRAFORM_OUTPUT"
-worker_image = "REPLACE_WITH_ECR_WORKER_URL_FROM_TERRAFORM_OUTPUT"
+aws_region  = "eu-central-1"
+environment = "dev"
 
-# Example (after terraform apply):
-# api_image    = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
-# worker_image = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-worker:latest"
+# -----------------------------------------------------------------------------
+# Secrets — replace with real values in terraform.tfvars
+# Or use environment variables:
+#   export TF_VAR_db_password="your-real-password"
+#   export TF_VAR_jwt_secret="your-real-secret"
+# -----------------------------------------------------------------------------
+db_password = "CHANGE_ME_STRONG_PASSWORD"
+jwt_secret  = "CHANGE_ME_LONG_RANDOM_STRING_MIN_32_CHARS"
 
-# Secrets (DON'T commit real ones)
-jwt_secret  = "CHANGE_ME"
-db_password = "CHANGE_ME_SUPER_SECRET"
+# -----------------------------------------------------------------------------
+# Monitoring
+# -----------------------------------------------------------------------------
+alert_email = "you@example.com"
 
-# optional
-api_desired_count    = 1
+# -----------------------------------------------------------------------------
+# ECS images (update after pushing to ECR)
+# -----------------------------------------------------------------------------
+api_image = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
+
+# -----------------------------------------------------------------------------
+# Sizing (defaults are fine for dev)
+# -----------------------------------------------------------------------------
+api_cpu           = 256
+api_memory        = 512
+api_desired_count = 1
+
+worker_cpu           = 256
+worker_memory        = 512
 worker_desired_count = 1

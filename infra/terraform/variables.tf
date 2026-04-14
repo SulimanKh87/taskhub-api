@@ -1,201 +1,137 @@
-# variables.tf
-# -------------------------
-# Project / environment
-# -------------------------
-variable "project" {
-  description = "Project name (used as prefix for all resources)"
-  type        = string
-  default     = "taskhub"
-}
+# =============================================================================
+# variables.tf — Input Variables
+# =============================================================================
 
-variable "env" {
-  description = "Environment name (dev / staging / prod)"
-  type        = string
-  default     = "dev"
-}
-
-# -------------------------
-# AWS settings
-# -------------------------
+# -----------------------------------------------------------------------------
+# Core
+# -----------------------------------------------------------------------------
 variable "aws_region" {
-  description = "AWS region to deploy resources into"
+  description = "AWS region for all resources"
   type        = string
   default     = "eu-central-1"
 }
 
-# -------------------------
-# Container images
-# -------------------------
+variable "environment" {
+  description = "Deployment environment (dev / staging / prod)"
+  type        = string
+  default     = "dev"
+
+  validation {
+    condition     = contains(["dev", "staging", "prod"], var.environment)
+    error_message = "environment must be dev, staging, or prod."
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Secrets (sensitive — never put real values in this file)
+# Supply via terraform.tfvars or environment variables:
+#   export TF_VAR_db_password="..."
+#   export TF_VAR_jwt_secret="..."
+# -----------------------------------------------------------------------------
+variable "db_password" {
+  description = "RDS PostgreSQL password — stored in Secrets Manager"
+  type        = string
+  sensitive   = true
+}
+
+variable "jwt_secret" {
+  description = "JWT signing secret — stored in Secrets Manager"
+  type        = string
+  sensitive   = true
+}
+
+# -----------------------------------------------------------------------------
+# Monitoring
+# -----------------------------------------------------------------------------
+variable "alert_email" {
+  description = "Email address for CloudWatch alarm notifications"
+  type        = string
+  default     = "alerts@example.com"
+}
+
+# -----------------------------------------------------------------------------
+# Networking (populated from main.tf outputs or remote state)
+# -----------------------------------------------------------------------------
+variable "private_subnet_ids" {
+  description = "List of private subnet IDs for ECS tasks"
+  type        = list(string)
+}
+
+variable "api_security_group_id" {
+  description = "Security group ID for API ECS tasks"
+  type        = string
+}
+
+variable "target_group_arn" {
+  description = "ALB target group ARN for the API service"
+  type        = string
+}
+
+variable "alb_arn_suffix" {
+  description = "ALB ARN suffix for CloudWatch metrics"
+  type        = string
+}
+
+variable "target_group_arn_suffix" {
+  description = "Target group ARN suffix for CloudWatch metrics"
+  type        = string
+}
+
+variable "redis_endpoint" {
+  description = "ElastiCache Redis primary endpoint"
+  type        = string
+}
+
+# -----------------------------------------------------------------------------
+# ECS
+# -----------------------------------------------------------------------------
 variable "api_image" {
-  description = "Docker image for the FastAPI service (ECR image URI)"
+  description = "ECR image URI for the API container (include tag)"
   type        = string
-  default     = "example/taskhub-api:latest"
+  default     = "123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest"
 }
 
-variable "worker_image" {
-  description = "Docker image for the Celery worker (ECR image URI)"
-  type        = string
-  default     = "example/taskhub-worker:latest"
-}
-
-# -------------------------
-# ECS task sizing
-# -------------------------
 variable "api_cpu" {
-  description = "CPU units for the API ECS task (256 = 0.25 vCPU)"
+  description = "Fargate CPU units for the API task (256 = 0.25 vCPU)"
   type        = number
   default     = 256
 }
 
 variable "api_memory" {
-  description = "Memory (MB) for the API ECS task"
-  type        = number
-  default     = 512
-}
-
-variable "worker_cpu" {
-  description = "CPU units for the Celery worker ECS task"
-  type        = number
-  default     = 256
-}
-
-variable "worker_memory" {
-  description = "Memory (MB) for the Celery worker ECS task"
+  description = "Fargate memory (MB) for the API task"
   type        = number
   default     = 512
 }
 
 variable "api_desired_count" {
-  description = "Desired tasks for API service"
+  description = "Desired number of API task replicas"
   type        = number
   default     = 1
+}
+
+variable "worker_cpu" {
+  description = "Fargate CPU units for the worker task"
+  type        = number
+  default     = 256
+}
+
+variable "worker_memory" {
+  description = "Fargate memory (MB) for the worker task"
+  type        = number
+  default     = 512
 }
 
 variable "worker_desired_count" {
-  description = "Desired tasks for Celery worker service"
+  description = "Desired number of worker task replicas"
   type        = number
   default     = 1
 }
 
-# -------------------------
-# App config / secrets (for learning: env vars in task definition)
-# Later: move secrets to SSM/Secrets Manager
-# -------------------------
-variable "jwt_secret" {
-  description = "JWT signing secret"
+# -----------------------------------------------------------------------------
+# EventBridge
+# -----------------------------------------------------------------------------
+variable "event_bus_name" {
+  description = "EventBridge event bus name"
   type        = string
-  default     = "CHANGE_ME"
-}
-
-# -------------------------
-# RDS (Postgres)
-# -------------------------
-variable "db_name" {
-  description = "Database name for Postgres"
-  type        = string
-  default     = "taskhub"
-}
-
-variable "db_username" {
-  description = "Master username for Postgres"
-  type        = string
-  default     = "taskhub"
-}
-
-variable "db_password" {
-  description = "Master password for Postgres (do NOT commit real secrets)"
-  type        = string
-  sensitive   = true
-  default     = "taskhub_pass_CHANGE_ME"
-}
-
-# -------------------------
-# Secrets Manager (Optional - Future Migration)
-# -------------------------
-variable "db_password_secret_arn" {
-  description = "ARN of DB password in AWS Secrets Manager (optional). When set, overrides db_password variable."
-  type        = string
-  default     = null
-}
-
-variable "jwt_secret_arn" {
-  description = "ARN of JWT secret in AWS Secrets Manager (optional). When set, overrides jwt_secret variable."
-  type        = string
-  default     = null
-}
-
-# -------------------------
-# RDS Configuration
-# -------------------------
-variable "rds_instance_class" {
-  description = "RDS instance type"
-  type        = string
-  default     = "db.t4g.micro"
-}
-
-variable "rds_allocated_storage" {
-  description = "RDS allocated storage (GB)"
-  type        = number
-  default     = 20
-}
-
-# -------------------------
-# ElastiCache (Redis)
-# -------------------------
-variable "redis_node_type" {
-  description = "Redis node type"
-  type        = string
-  default     = "cache.t4g.micro"
-}
-
-# -------------------------
-# Logs
-# -------------------------
-variable "log_retention_days" {
-  description = "CloudWatch log retention days"
-  type        = number
-  default     = 7
-}
-
-
-# -------------------------
-# Monitoring
-# -------------------------
-variable "alarm_email" {
-  description = "Email address for CloudWatch alarm notifications"
-  type        = string
-  default     = "your-email@example.com"
-}
-
-variable "cpu_alarm_threshold" {
-  description = "CPU threshold for alarms (%)"
-  type        = number
-  default     = 80
-}
-
-variable "memory_alarm_threshold" {
-  description = "Memory threshold for alarms (%)"
-  type        = number
-  default     = 80
-}
-
-# -------------------------
-# Autoscaling
-# -------------------------
-variable "autoscaling_min_capacity" {
-  description = "Minimum number of ECS tasks"
-  type        = number
-  default     = 1
-}
-
-variable "autoscaling_max_capacity" {
-  description = "Maximum number of ECS tasks"
-  type        = number
-  default     = 2 # 2 instead of 4 for lower costs and learning purpose
-}
-
-variable "autoscaling_cpu_target" {
-  description = "Target CPU utilization for autoscaling (%)"
-  type        = number
-  default     = 70
+  default     = "default"
 }
