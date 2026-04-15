@@ -1,12 +1,12 @@
 # =============================================================================
 # TaskHub API — Project Structure
-# Last updated: Milestone 3 (CI/CD Hardening)
+# Last updated: Milestone 4 (Kubernetes + Helm)
 #
 # Milestone history:
 #   M1 ✅ Docker production hardening (multi-stage build, .dockerignore, override)
 #   M2 ✅ Terraform production structure (remote state, Secrets Manager, modules)
 #   M3 ✅ CI/CD hardening (split workflows, Trivy scanning, rollback, Jenkinsfile)
-#   M4 ⏳ Kubernetes + Helm (manifests, HPA, EKS Terraform)
+#   M4 ✅ Kubernetes + Helm (manifests, HPA, EKS Terraform, Helm chart)
 #   M5 ⏳ Monitoring stack (Prometheus, Grafana, CloudWatch alarms)
 #   M6 ⏳ Incident response docs (INCIDENTS.md, OPERATIONS.md)
 #   M7 ⏳ Cost & scaling awareness (COST.md, Fargate Spot)
@@ -15,8 +15,7 @@
 
 taskhub-api/
 │
-├── app/
-│   ├── __init__.py
+├── app/                              # FastAPI application (unchanged)
 │   ├── main.py
 │   ├── config.py
 │   ├── db.py
@@ -24,29 +23,10 @@ taskhub-api/
 │   ├── events.py
 │   ├── idempotency.py
 │   ├── routes/
-│   │   ├── auth.py
-│   │   └── tasks.py
 │   ├── schemas/
-│   │   ├── user_schema.py
-│   │   ├── task_schema.py
-│   │   ├── pagination_schema.py
-│   │   └── token_schema.py
 │   ├── models/
-│   │   ├── base.py
-│   │   ├── user.py
-│   │   ├── task.py
-│   │   └── job_log.py
 │   ├── workers/
-│   │   ├── __init__.py
-│   │   ├── celery_app.py
-│   │   └── tasks/
-│   │       ├── __init__.py
-│   │       └── email_tasks.py
 │   └── tests/
-│       ├── conftest.py
-│       ├── test_api.py
-│       ├── test_tasks.py
-│       └── test_idempotency.py
 │
 ├── infra/
 │   ├── ecs-tasks/
@@ -59,19 +39,41 @@ taskhub-api/
 │       ├── lambda.tf
 │       ├── migration-task.tf
 │       ├── outputs.tf
-│       ├── .terraform.lock.hcl
-│       ├── provider.tf                    # M2: S3 remote state + DynamoDB locking
-│       ├── variables.tf                   # M2: updated vars
-│       ├── ecs.tf                         # M2: Secrets Manager ARNs, FARGATE_SPOT
-│       ├── secrets.tf                     # M2: Secrets Manager resources
-│       ├── monitoring.tf                  # M2: CloudWatch alarms + SNS + dashboard
-│       └── terraform.tfvars.example       # M2: safe example values
+│       ├── provider.tf               # M2: remote state
+│       ├── variables.tf              # M2: updated
+│       ├── ecs.tf                    # M2: Secrets Manager ARNs
+│       ├── secrets.tf                # M2: Secrets Manager resources
+│       ├── monitoring.tf             # M2: CloudWatch alarms
+│       ├── terraform.tfvars.example  # M2: safe example values
+│       └── .terraform.lock.hcl
+│       # ── M4 ──────────────────────────────────────────────────────────────
+│       └── eks.tf                    # ✅ NEW: EKS cluster (interview reference)
+│       # ────────────────────────────────────────────────────────────────────
+│
+│
+# ── M4: Kubernetes Manifests ─────────────────────────────────────────────────
+├── k8s/
+│   ├── configmap.yaml                # ✅ NEW: non-sensitive env vars
+│   ├── deployment-api.yaml           # ✅ NEW: readiness/liveness/startup probes
+│   ├── deployment-worker.yaml        # ✅ NEW: Celery worker, exec liveness probe
+│   ├── service.yaml                  # ✅ NEW: ClusterIP + ALB Ingress
+│   └── hpa.yaml                      # ✅ NEW: CPU + memory autoscaling
+│
+├── helm/
+│   └── taskhub/
+│       ├── Chart.yaml                # ✅ NEW: chart metadata
+│       ├── values.yaml               # ✅ NEW: all defaults, overridable per env
+│       └── templates/
+│           ├── _helpers.tpl          # ✅ NEW: reusable label helpers
+│           ├── configmap.yaml        # ✅ NEW
+│           ├── deployment-api.yaml   # ✅ NEW
+│           ├── deployment-worker.yaml # ✅ NEW
+│           ├── service.yaml          # ✅ NEW
+│           └── hpa.yaml              # ✅ NEW
+# ─────────────────────────────────────────────────────────────────────────────
 │
 ├── alembic/
-│   ├── env.py
-│   ├── script.py.mako
 │   └── versions/
-│       └── 0001_init_schema.py
 │
 ├── docs/
 │   ├── ARCHITECTURE.md
@@ -85,22 +87,16 @@ taskhub-api/
 │
 ├── .github/
 │   └── workflows/
-│       # ── M3: CI/CD Hardening ──────────────────────────────────────────────
-│       ├── ci.yml                         # ✅ UPDATED: test + validate only (no deploy)
-│       └── deploy.yml                     # ✅ NEW: build → scan → push → deploy → rollback
-│       # ─────────────────────────────────────────────────────────────────────
+│       ├── ci.yml                    # M3: test + validate
+│       └── deploy.yml                # M3: build → scan → deploy → rollback
 │
-# ── M3: CI/CD Hardening ──────────────────────────────────────────────────────
-├── Jenkinsfile                            # ✅ NEW: mirrors pipeline, shows Jenkins familiarity
-# ── M1: Docker Production Hardening ─────────────────────────────────────────
-├── Dockerfile                             # M1: multi-stage build
-├── .dockerignore                          # M1: excludes secrets/infra/tests
-├── docker-compose.yml                     # base service definitions
-├── docker-compose.override.yml            # M1: local dev (hot reload, Flower)
-# ─────────────────────────────────────────────────────────────────────────────
-│
+├── Jenkinsfile                       # M3: Jenkins pipeline reference
+├── Dockerfile                        # M1: multi-stage
+├── .dockerignore                     # M1
+├── docker-compose.yml
+├── docker-compose.override.yml       # M1: local dev
 ├── pytest.ini
 ├── requirements.txt
 ├── .env.example
 ├── README.md
-└── project_structure.txt                  # ✅ UPDATED this file
+└── project_structure.txt             # ✅ UPDATED this file
