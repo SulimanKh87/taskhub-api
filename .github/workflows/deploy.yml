@@ -1,0 +1,325 @@
+# =============================================================================
+# deploy.yml — Build → Scan → Push → Deploy → Rollback on failure
+#
+# TRIGGERS: only on push to devops-sql-aws (your main DevOps branch)
+# NEEDS: ci.yml test + terraform jobs must pass first
+#
+# PIPELINE STAGES:
+#   1. build-and-scan  — build Docker image, scan for CVEs with Trivy
+#   2. push            — push to ECR (only if scan passed)
+#   3. deploy          — update ECS services, wait for stable
+#   4. rollback        — auto-rollback to previous task def on failure
+#
+# KEY DEVOPS CONCEPTS SHOWN HERE:
+#   - Image scanning before production (shift-left security)
+#   - Dual tagging: git SHA (immutable) + latest (convenience)
+#   - Deployment circuit breaker via ECS + manual rollback fallback
+#   - Concurrency lock prevents two deploys running simultaneously
+#   - Separate job for rollback — runs only on failure of deploy job
+#
+# INTERVIEW ANSWER:
+#   "Images are scanned for CVEs before pushing to ECR. Deploy waits for
+#    ECS services to stabilize. If stabilization fails, a rollback job
+#    automatically re-deploys the previous task definition revision."
+# =============================================================================
+
+name: Deploy — Build, Scan, Push, Deploy
+
+on:
+  push:
+    branches:
+      - "devops-sql-aws"
+
+# Prevent two deploys running at the same time
+# If a new push comes in while deploying, cancel the in-progress deploy
+concurrency:
+  group: deploy-production
+  cancel-in-progress: true
+
+env:
+  AWS_REGION: eu-central-1
+  ECR_API_REPO: taskhub-dev-api
+  ECR_WORKER_REPO: taskhub-dev-worker
+  ECS_CLUSTER: taskhub-dev-cluster
+  ECS_API_SERVICE: taskhub-dev-api
+  ECS_WORKER_SERVICE: taskhub-dev-worker
+
+jobs:
+
+  # ===========================================================================
+  # Gate: CI must pass before any deploy job starts
+  # This re-uses the ci.yml workflow — no duplication of test logic
+  # ===========================================================================
+  ci-gate:
+    name: Wait for CI
+    uses: ./.github/workflows/ci.yml
+
+  # ===========================================================================
+  # Job 1: Build Docker image + scan for vulnerabilities
+  #
+  # WHY SCAN BEFORE PUSH?
+  #   Catching CVEs before they reach ECR/ECS means:
+  #   - No vulnerable images ever run in production
+  #   - Fail fast (build stage) not late (runtime)
+  #   - Demonstrates shift-left security mindset
+  #
+  # Trivy severity levels: UNKNOWN, LOW, MEDIUM, HIGH, CRITICAL
+  # We block on CRITICAL only — avoids false positives blocking deploys
+  # ===========================================================================
+  build-and-scan:
+    name: Build & Scan Image
+    runs-on: ubuntu-latest
+    needs: [ci-gate]
+
+    outputs:
+      image-tag: ${{ steps.meta.outputs.tag }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set image tag
+        id: meta
+        run: echo "tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            -t taskhub-api:${{ steps.meta.outputs.tag }} \
+            -t taskhub-api:latest \
+            .
+
+      # -----------------------------------------------------------------------
+      # Trivy vulnerability scanner
+      # Scans the built image for known CVEs in OS packages + Python deps
+      # exit-code: 1 means fail the pipeline if CRITICAL vulns found
+      # -----------------------------------------------------------------------
+      - name: Scan image for vulnerabilities (Trivy)
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: taskhub-api:${{ steps.meta.outputs.tag }}
+          format: table
+          exit-code: "1"
+          severity: "CRITICAL"
+          ignore-unfixed: true        # skip CVEs with no available fix
+
+      # Save image to tar so push job can load it without rebuilding
+      - name: Save image to cache
+        run: docker save taskhub-api:${{ steps.meta.outputs.tag }} -o /tmp/image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp/image.tar
+          retention-days: 1           # only needed for this pipeline run
+
+  # ===========================================================================
+  # Job 2: Push to ECR
+  # Loads the pre-built image from Job 1 — no rebuild needed
+  # Dual-tags: git SHA (immutable, for rollback) + latest (convenience)
+  # ===========================================================================
+  push:
+    name: Push to ECR
+    runs-on: ubuntu-latest
+    needs: [build-and-scan]
+
+    outputs:
+      registry: ${{ steps.login-ecr.outputs.registry }}
+      image-tag: ${{ needs.build-and-scan.outputs.image-tag }}
+
+    steps:
+      - name: Download image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: /tmp
+
+      - name: Load Docker image
+        run: docker load -i /tmp/image.tar
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push images to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          TAG: ${{ needs.build-and-scan.outputs.image-tag }}
+        run: |
+          # Tag API image with git SHA (immutable — used for rollback)
+          docker tag taskhub-api:$TAG $REGISTRY/${{ env.ECR_API_REPO }}:$TAG
+          # Tag with latest (convenience — points to newest image)
+          docker tag taskhub-api:$TAG $REGISTRY/${{ env.ECR_API_REPO }}:latest
+
+          # Worker uses the same image — different ECS command at runtime
+          docker tag taskhub-api:$TAG $REGISTRY/${{ env.ECR_WORKER_REPO }}:$TAG
+          docker tag taskhub-api:$TAG $REGISTRY/${{ env.ECR_WORKER_REPO }}:latest
+
+          docker push $REGISTRY/${{ env.ECR_API_REPO }}:$TAG
+          docker push $REGISTRY/${{ env.ECR_API_REPO }}:latest
+          docker push $REGISTRY/${{ env.ECR_WORKER_REPO }}:$TAG
+          docker push $REGISTRY/${{ env.ECR_WORKER_REPO }}:latest
+
+          echo "Pushed: $REGISTRY/${{ env.ECR_API_REPO }}:$TAG"
+
+  # ===========================================================================
+  # Job 3: Deploy to ECS
+  #
+  # WHAT HAPPENS HERE:
+  #   1. Save current task definition revision (for rollback)
+  #   2. Force new deployment (ECS pulls the new :latest image)
+  #   3. Wait up to 10 minutes for services to stabilize
+  #   4. If wait times out → rollback job takes over
+  #
+  # ECS deployment_circuit_breaker (set in ecs.tf) handles container-level
+  # failures (crash loops). This job handles infrastructure-level failures
+  # (services never become stable after N minutes).
+  # ===========================================================================
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: [push]
+
+    outputs:
+      # Save task def revisions BEFORE deploying — needed for rollback
+      api-previous-task-def: ${{ steps.save-revisions.outputs.api-revision }}
+      worker-previous-task-def: ${{ steps.save-revisions.outputs.worker-revision }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Save current task definition revisions BEFORE deploying
+      # These are the versions we'll roll back to if deploy fails
+      - name: Save current task definition revisions
+        id: save-revisions
+        run: |
+          API_REVISION=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_API_SERVICE }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          WORKER_REVISION=$(aws ecs describe-services \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_WORKER_SERVICE }} \
+            --region ${{ env.AWS_REGION }} \
+            --query 'services[0].taskDefinition' \
+            --output text)
+
+          echo "api-revision=$API_REVISION" >> $GITHUB_OUTPUT
+          echo "worker-revision=$WORKER_REVISION" >> $GITHUB_OUTPUT
+          echo "API previous revision: $API_REVISION"
+          echo "Worker previous revision: $WORKER_REVISION"
+
+      - name: Deploy API service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_API_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Deploy Worker service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_WORKER_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      # Wait for both services to be running and healthy
+      # Timeout: ~10 minutes (AWS default for services-stable)
+      # If this fails → rollback job runs automatically
+      - name: Wait for services to stabilize
+        run: |
+          echo "Waiting for services to stabilize..."
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_API_SERVICE }} ${{ env.ECS_WORKER_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+          echo "✅ Deployed image ${{ needs.push.outputs.image-tag }} successfully"
+
+  # ===========================================================================
+  # Job 4: Auto-rollback
+  #
+  # WHEN IT RUNS: only if the deploy job FAILS (services never stabilized)
+  # WHAT IT DOES: re-deploys the previous task definition revision
+  #
+  # WHY TASK DEFINITION REVISION NOT IMAGE TAG?
+  #   Task definition revision is the atomic unit ECS deploys.
+  #   It includes the image + env vars + secrets + health check config.
+  #   Rolling back the revision guarantees the exact previous config,
+  #   not just the previous image.
+  #
+  # INTERVIEW ANSWER:
+  #   "If ECS services don't stabilize within 10 minutes, the rollback job
+  #    automatically re-deploys the previous task definition revision.
+  #    This means the previous working config — not just the image — is restored."
+  # ===========================================================================
+  rollback:
+    name: Rollback on failure
+    runs-on: ubuntu-latest
+    needs: [deploy]
+    # Only runs if deploy job failed — not on success, not on cancel
+    if: failure()
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback API to previous revision
+        run: |
+          PREV_REVISION="${{ needs.deploy.outputs.api-previous-task-def }}"
+          echo "Rolling back API to: $PREV_REVISION"
+
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_API_SERVICE }} \
+            --task-definition "$PREV_REVISION" \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Rollback Worker to previous revision
+        run: |
+          PREV_REVISION="${{ needs.deploy.outputs.worker-previous-task-def }}"
+          echo "Rolling back Worker to: $PREV_REVISION"
+
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_WORKER_SERVICE }} \
+            --task-definition "$PREV_REVISION" \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for rollback to stabilize
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_API_SERVICE }} ${{ env.ECS_WORKER_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+          echo "⏪ Rollback complete — services restored to previous revision"
+
+      - name: Notify rollback occurred
+        run: |
+          echo "::error::Deploy failed — rolled back to previous task definition revision"
+          echo "::error::API: ${{ needs.deploy.outputs.api-previous-task-def }}"
+          echo "::error::Worker: ${{ needs.deploy.outputs.worker-previous-task-def }}"
+          exit 1    # fail the pipeline so GitHub shows red — rollback is not a success

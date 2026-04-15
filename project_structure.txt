@@ -1,11 +1,11 @@
 # =============================================================================
 # TaskHub API — Project Structure
-# Last updated: Milestone 2 (Terraform Production Structure)
+# Last updated: Milestone 3 (CI/CD Hardening)
 #
 # Milestone history:
 #   M1 ✅ Docker production hardening (multi-stage build, .dockerignore, override)
 #   M2 ✅ Terraform production structure (remote state, Secrets Manager, modules)
-#   M3 ⏳ CI/CD hardening (rollback, image scanning, Jenkinsfile)
+#   M3 ✅ CI/CD hardening (split workflows, Trivy scanning, rollback, Jenkinsfile)
 #   M4 ⏳ Kubernetes + Helm (manifests, HPA, EKS Terraform)
 #   M5 ⏳ Monitoring stack (Prometheus, Grafana, CloudWatch alarms)
 #   M6 ⏳ Incident response docs (INCIDENTS.md, OPERATIONS.md)
@@ -15,7 +15,7 @@
 
 taskhub-api/
 │
-├── app/                              # FastAPI application
+├── app/
 │   ├── __init__.py
 │   ├── main.py
 │   ├── config.py
@@ -53,22 +53,19 @@ taskhub-api/
 │   │   ├── api-task-definition.json
 │   │   └── worker-task-definition.json
 │   └── terraform/
-│       ├── main.tf                        # VPC, subnets, SGs, RDS, Redis, ALB
-│       ├── iam.tf                         # IAM roles (execution + task)
-│       ├── ecr.tf                         # ECR repos + lifecycle policies
-│       ├── lambda.tf                      # EventBridge + Lambda
-│       ├── migration-task.tf              # Alembic migration ECS task
-│       ├── outputs.tf                     # Resource output values
+│       ├── main.tf
+│       ├── iam.tf
+│       ├── ecr.tf
+│       ├── lambda.tf
+│       ├── migration-task.tf
+│       ├── outputs.tf
 │       ├── .terraform.lock.hcl
-│       │
-│       # ── M2: Terraform Production Structure ──────────────────────────────
-│       ├── provider.tf                    # ✅ UPDATED: S3 remote state + DynamoDB locking
-│       ├── variables.tf                   # ✅ UPDATED: new vars (secrets, monitoring, sizing)
-│       ├── ecs.tf                         # ✅ UPDATED: Secrets Manager ARNs, FARGATE_SPOT worker
-│       ├── secrets.tf                     # ✅ NEW: Secrets Manager (db_password + jwt_secret)
-│       ├── monitoring.tf                  # ✅ NEW: CloudWatch alarms + SNS + dashboard
-│       ├── terraform.tfvars.example       # ✅ NEW: safe-to-commit example values
-│       # ────────────────────────────────────────────────────────────────────
+│       ├── provider.tf                    # M2: S3 remote state + DynamoDB locking
+│       ├── variables.tf                   # M2: updated vars
+│       ├── ecs.tf                         # M2: Secrets Manager ARNs, FARGATE_SPOT
+│       ├── secrets.tf                     # M2: Secrets Manager resources
+│       ├── monitoring.tf                  # M2: CloudWatch alarms + SNS + dashboard
+│       └── terraform.tfvars.example       # M2: safe example values
 │
 ├── alembic/
 │   ├── env.py
@@ -88,17 +85,22 @@ taskhub-api/
 │
 ├── .github/
 │   └── workflows/
-│       └── ci.yml
+│       # ── M3: CI/CD Hardening ──────────────────────────────────────────────
+│       ├── ci.yml                         # ✅ UPDATED: test + validate only (no deploy)
+│       └── deploy.yml                     # ✅ NEW: build → scan → push → deploy → rollback
+│       # ─────────────────────────────────────────────────────────────────────
 │
+# ── M3: CI/CD Hardening ──────────────────────────────────────────────────────
+├── Jenkinsfile                            # ✅ NEW: mirrors pipeline, shows Jenkins familiarity
 # ── M1: Docker Production Hardening ─────────────────────────────────────────
-├── Dockerfile                        # ✅ multi-stage build
-├── .dockerignore                     # ✅ excludes secrets/infra/tests
-├── docker-compose.yml                # base service definitions
-├── docker-compose.override.yml       # ✅ local dev (hot reload, Flower)
+├── Dockerfile                             # M1: multi-stage build
+├── .dockerignore                          # M1: excludes secrets/infra/tests
+├── docker-compose.yml                     # base service definitions
+├── docker-compose.override.yml            # M1: local dev (hot reload, Flower)
 # ─────────────────────────────────────────────────────────────────────────────
 │
 ├── pytest.ini
 ├── requirements.txt
 ├── .env.example
 ├── README.md
-└── project_structure.txt             # ✅ UPDATED this file
+└── project_structure.txt                  # ✅ UPDATED this file
