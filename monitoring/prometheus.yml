@@ -1,0 +1,61 @@
+# =============================================================================
+# prometheus.yml — Prometheus Scrape Configuration
+#
+# WHAT PROMETHEUS DOES:
+#   Prometheus pulls (scrapes) metrics from targets at a defined interval.
+#   This is opposite to push-based systems — the app doesn't send metrics,
+#   Prometheus comes and fetches them.
+#
+# TARGETS:
+#   1. taskhub-api  — our FastAPI app at /metrics (HTTP requests, latency)
+#   2. prometheus   — prometheus scraping itself (meta-monitoring)
+#
+# INTERVIEW ANSWER:
+#   "Prometheus scrapes /metrics every 15 seconds. FastAPI exposes metrics
+#    via prometheus-fastapi-instrumentator. Grafana queries Prometheus
+#    to visualize request rate, latency, and error rate in real time."
+# =============================================================================
+
+global:
+  scrape_interval: 15s          # how often to scrape targets
+  evaluation_interval: 15s      # how often to evaluate alerting rules
+  scrape_timeout: 10s           # timeout per scrape request
+
+  # Labels added to every metric collected by this Prometheus instance
+  # Useful when federating multiple Prometheus instances
+  external_labels:
+    environment: "local"
+    project: "taskhub"
+
+# =============================================================================
+# Scrape configurations
+# =============================================================================
+scrape_configs:
+
+  # ---------------------------------------------------------------------------
+  # Target 1: TaskHub FastAPI application
+  # Scrapes the /metrics endpoint exposed by prometheus-fastapi-instrumentator
+  #
+  # Metrics available:
+  #   http_requests_total{method, handler, status}
+  #   http_request_duration_seconds{method, handler, le}
+  #   http_requests_in_progress{method, handler}
+  # ---------------------------------------------------------------------------
+  - job_name: "taskhub-api"
+    static_configs:
+      - targets:
+          - "taskhub-api:8000"    # Docker Compose service name + port
+        labels:
+          service: "api"
+          component: "fastapi"
+    metrics_path: /metrics
+    scrape_interval: 15s
+
+  # ---------------------------------------------------------------------------
+  # Target 2: Prometheus self-monitoring
+  # Lets you alert if Prometheus itself is having problems
+  # ---------------------------------------------------------------------------
+  - job_name: "prometheus"
+    static_configs:
+      - targets:
+          - "localhost:9090"

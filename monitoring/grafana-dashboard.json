@@ -1,0 +1,223 @@
+{
+  "title": "TaskHub API — Production Dashboard",
+  "uid": "taskhub-api-v1",
+  "version": 1,
+  "schemaVersion": 38,
+  "refresh": "15s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["taskhub", "fastapi", "production"],
+  "panels": [
+
+    {
+      "id": 1,
+      "title": "Request Rate (req/sec)",
+      "description": "HTTP requests per second across all endpoints. Spike = traffic surge.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(rate(http_requests_total{job=\"taskhub-api\"}[1m]))",
+          "legendFormat": "Total req/sec",
+          "refId": "A"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"taskhub-api\", status=~\"2..\"}[1m]))",
+          "legendFormat": "2xx req/sec",
+          "refId": "B"
+        },
+        {
+          "expr": "sum(rate(http_requests_total{job=\"taskhub-api\", status=~\"5..\"}[1m]))",
+          "legendFormat": "5xx req/sec",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2 }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "5xx req/sec" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": 2,
+      "title": "Error Rate (%)",
+      "description": "Percentage of requests returning 5xx. Alert threshold: >1%.",
+      "type": "gauge",
+      "gridPos": { "h": 8, "w": 6, "x": 12, "y": 0 },
+      "targets": [
+        {
+          "expr": "100 * sum(rate(http_requests_total{job=\"taskhub-api\", status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"taskhub-api\"}[5m]))",
+          "legendFormat": "Error %",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 3,
+      "title": "Active Requests (in-flight)",
+      "description": "Requests currently being processed. High value = app under pressure.",
+      "type": "stat",
+      "gridPos": { "h": 8, "w": 6, "x": 18, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum(http_requests_in_progress{job=\"taskhub-api\"})",
+          "legendFormat": "In progress",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 50 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 4,
+      "title": "Request Latency — p50 / p95 / p99",
+      "description": "Response time percentiles. p99 > 1s = users noticing slowness.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(http_request_duration_seconds_bucket{job=\"taskhub-api\"}[5m])) by (le))",
+          "legendFormat": "p50 (median)",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"taskhub-api\"}[5m])) by (le))",
+          "legendFormat": "p95",
+          "refId": "B"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{job=\"taskhub-api\"}[5m])) by (le))",
+          "legendFormat": "p99",
+          "refId": "C"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 2 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.5 },
+              { "color": "red", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      "id": 5,
+      "title": "Latency by Endpoint (p95)",
+      "description": "Which endpoints are slowest? Useful for finding N+1 queries.",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket{job=\"taskhub-api\"}[5m])) by (le, handler))",
+          "legendFormat": "{{handler}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": { "lineWidth": 1 }
+        }
+      }
+    },
+
+    {
+      "id": 6,
+      "title": "Request Volume by Endpoint",
+      "description": "Which endpoints get the most traffic?",
+      "type": "bargauge",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 16 },
+      "targets": [
+        {
+          "expr": "sort_desc(sum(rate(http_requests_total{job=\"taskhub-api\"}[5m])) by (handler))",
+          "legendFormat": "{{handler}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        }
+      }
+    },
+
+    {
+      "id": 7,
+      "title": "HTTP Status Code Breakdown",
+      "description": "Distribution of response codes. Growing 4xx = client errors. Growing 5xx = your bug.",
+      "type": "piechart",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 16 },
+      "targets": [
+        {
+          "expr": "sum(increase(http_requests_total{job=\"taskhub-api\"}[1h])) by (status)",
+          "legendFormat": "{{status}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": { "unit": "short" }
+      }
+    }
+
+  ],
+
+  "templating": {
+    "list": []
+  },
+
+  "annotations": {
+    "list": [
+      {
+        "name": "Deployments",
+        "enable": true,
+        "hide": false,
+        "iconColor": "blue",
+        "type": "dashboard"
+      }
+    ]
+  }
+}

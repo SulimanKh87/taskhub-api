@@ -1,0 +1,79 @@
+# =============================================================================
+# docker-compose.monitoring.yml — Prometheus + Grafana
+#
+# Run alongside the main stack:
+#   docker compose -f docker-compose.yml \
+#                  -f monitoring/docker-compose.monitoring.yml up
+#
+# Or standalone (if API is already running):
+#   docker compose -f monitoring/docker-compose.monitoring.yml up
+#
+# Access:
+#   Grafana:    http://localhost:3000  (admin / admin)
+#   Prometheus: http://localhost:9090
+# =============================================================================
+
+services:
+
+  # ===========================================================================
+  # Prometheus — metrics collection
+  # Scrapes /metrics from the FastAPI app every 15 seconds
+  # Stores time-series data locally (not persistent across restarts in dev)
+  # ===========================================================================
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: taskhub-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      # Mount our scrape config into the container
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      # Persist metrics data across container restarts
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=7d"    # keep 7 days of metrics
+      - "--web.enable-lifecycle"               # allows config reload via HTTP
+    networks:
+      - taskhub-network
+      - monitoring-network
+
+  # ===========================================================================
+  # Grafana — metrics visualization
+  # Pre-loads the TaskHub dashboard on startup via provisioning
+  # ===========================================================================
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: taskhub-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin      # change in production
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /etc/grafana/dashboards/taskhub.json
+    volumes:
+      # Auto-provision Prometheus as a datasource
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      # Auto-load our dashboard
+      - ./monitoring/grafana-dashboard.json:/etc/grafana/dashboards/taskhub.json:ro
+      # Persist Grafana state (dashboards, users) across restarts
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - monitoring-network
+
+networks:
+  taskhub-network:
+    external: true          # must match network name in docker-compose.yml
+    name: taskhub-api_taskhub-network
+  monitoring-network:
+    driver: bridge
+
+volumes:
+  prometheus_data:
+  grafana_data:

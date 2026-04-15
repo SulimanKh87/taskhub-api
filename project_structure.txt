@@ -1,37 +1,36 @@
 # =============================================================================
 # TaskHub API — Project Structure
-# Last updated: Milestone 4 (Kubernetes + Helm)
+# Last updated: Milestone 5 (Monitoring Stack)
 #
 # Milestone history:
-#   M1 ✅ Docker production hardening (multi-stage build, .dockerignore, override)
-#   M2 ✅ Terraform production structure (remote state, Secrets Manager, modules)
-#   M3 ✅ CI/CD hardening (split workflows, Trivy scanning, rollback, Jenkinsfile)
-#   M4 ✅ Kubernetes + Helm (manifests, HPA, EKS Terraform, Helm chart)
-#   M5 ⏳ Monitoring stack (Prometheus, Grafana, CloudWatch alarms)
+#   M1 ✅ Docker production hardening
+#   M2 ✅ Terraform production structure
+#   M3 ✅ CI/CD hardening
+#   M4 ✅ Kubernetes + Helm
+#   M5 ✅ Monitoring stack (Prometheus, Grafana, /metrics endpoint)
 #   M6 ⏳ Incident response docs (INCIDENTS.md, OPERATIONS.md)
-#   M7 ⏳ Cost & scaling awareness (COST.md, Fargate Spot)
+#   M7 ⏳ Cost & scaling awareness (COST.md)
 #   M8 ⏳ Interview polish + README overhaul
 # =============================================================================
 
 taskhub-api/
 │
-├── app/                              # FastAPI application (unchanged)
-│   ├── main.py
+├── app/
+│   ├── main.py                       # ✅ M5 UPDATED: Prometheus /metrics endpoint
 │   ├── config.py
 │   ├── db.py
 │   ├── security.py
 │   ├── events.py
 │   ├── idempotency.py
 │   ├── routes/
+│   │   ├── auth.py
+│   │   └── tasks.py
 │   ├── schemas/
 │   ├── models/
 │   ├── workers/
 │   └── tests/
 │
 ├── infra/
-│   ├── ecs-tasks/
-│   │   ├── api-task-definition.json
-│   │   └── worker-task-definition.json
 │   └── terraform/
 │       ├── main.tf
 │       ├── iam.tf
@@ -43,38 +42,43 @@ taskhub-api/
 │       ├── variables.tf              # M2: updated
 │       ├── ecs.tf                    # M2: Secrets Manager ARNs
 │       ├── secrets.tf                # M2: Secrets Manager resources
-│       ├── monitoring.tf             # M2: CloudWatch alarms
-│       ├── terraform.tfvars.example  # M2: safe example values
+│       ├── monitoring.tf             # M2: CloudWatch alarms + SNS + dashboard
+│       ├── terraform.tfvars.example
+│       ├── eks.tf                    # M4: EKS cluster
 │       └── .terraform.lock.hcl
-│       # ── M4 ──────────────────────────────────────────────────────────────
-│       └── eks.tf                    # ✅ NEW: EKS cluster (interview reference)
-│       # ────────────────────────────────────────────────────────────────────
 │
+├── k8s/                              # M4: raw Kubernetes manifests
+│   ├── configmap.yaml
+│   ├── deployment-api.yaml
+│   ├── deployment-worker.yaml
+│   ├── service.yaml
+│   └── hpa.yaml
 │
-# ── M4: Kubernetes Manifests ─────────────────────────────────────────────────
-├── k8s/
-│   ├── configmap.yaml                # ✅ NEW: non-sensitive env vars
-│   ├── deployment-api.yaml           # ✅ NEW: readiness/liveness/startup probes
-│   ├── deployment-worker.yaml        # ✅ NEW: Celery worker, exec liveness probe
-│   ├── service.yaml                  # ✅ NEW: ClusterIP + ALB Ingress
-│   └── hpa.yaml                      # ✅ NEW: CPU + memory autoscaling
+├── helm/taskhub/                     # M4: Helm chart
+│   ├── Chart.yaml
+│   ├── values.yaml
+│   └── templates/
+│       ├── _helpers.tpl
+│       ├── configmap.yaml
+│       ├── deployment-api.yaml
+│       ├── deployment-worker.yaml
+│       ├── service.yaml
+│       └── hpa.yaml
 │
-├── helm/
-│   └── taskhub/
-│       ├── Chart.yaml                # ✅ NEW: chart metadata
-│       ├── values.yaml               # ✅ NEW: all defaults, overridable per env
-│       └── templates/
-│           ├── _helpers.tpl          # ✅ NEW: reusable label helpers
-│           ├── configmap.yaml        # ✅ NEW
-│           ├── deployment-api.yaml   # ✅ NEW
-│           ├── deployment-worker.yaml # ✅ NEW
-│           ├── service.yaml          # ✅ NEW
-│           └── hpa.yaml              # ✅ NEW
+# ── M5: Monitoring Stack ─────────────────────────────────────────────────────
+├── monitoring/
+│   ├── docker-compose.monitoring.yml # ✅ NEW: Prometheus + Grafana services
+│   ├── prometheus.yml                # ✅ NEW: scrape config (taskhub-api + self)
+│   ├── grafana-dashboard.json        # ✅ NEW: pre-built dashboard (7 panels)
+│   └── grafana/
+│       └── provisioning/
+│           ├── datasources/
+│           │   └── prometheus.yml    # ✅ NEW: auto-configure Prometheus datasource
+│           └── dashboards/
+│               └── dashboards.yml    # ✅ NEW: auto-load dashboard on startup
 # ─────────────────────────────────────────────────────────────────────────────
 │
 ├── alembic/
-│   └── versions/
-│
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
@@ -82,21 +86,18 @@ taskhub-api/
 │   └── ECR.md
 │
 ├── scripts/
-│   ├── push-to-ecr.sh
-│   └── run-migrations.sh
-│
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                    # M3: test + validate
-│       └── deploy.yml                # M3: build → scan → deploy → rollback
+│       ├── ci.yml                    # M3
+│       └── deploy.yml                # M3
 │
-├── Jenkinsfile                       # M3: Jenkins pipeline reference
-├── Dockerfile                        # M1: multi-stage
+├── Jenkinsfile                       # M3
+├── Dockerfile                        # M1
 ├── .dockerignore                     # M1
 ├── docker-compose.yml
-├── docker-compose.override.yml       # M1: local dev
+├── docker-compose.override.yml       # M1
 ├── pytest.ini
-├── requirements.txt
+├── requirements.txt                  # ✅ M5 UPDATED: + prometheus-fastapi-instrumentator
 ├── .env.example
 ├── README.md
 └── project_structure.txt             # ✅ UPDATED this file
