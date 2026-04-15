@@ -1,14 +1,14 @@
 # =============================================================================
 # TaskHub API — Project Structure
-# Last updated: Milestone 5 (Monitoring Stack)
+# Last updated: Milestone 6 (Incident Response Docs)
 #
 # Milestone history:
 #   M1 ✅ Docker production hardening
 #   M2 ✅ Terraform production structure
 #   M3 ✅ CI/CD hardening
 #   M4 ✅ Kubernetes + Helm
-#   M5 ✅ Monitoring stack (Prometheus, Grafana, /metrics endpoint)
-#   M6 ⏳ Incident response docs (INCIDENTS.md, OPERATIONS.md)
+#   M5 ✅ Monitoring stack
+#   M6 ✅ Incident response docs (INCIDENTS.md, OPERATIONS.md)
 #   M7 ⏳ Cost & scaling awareness (COST.md)
 #   M8 ⏳ Interview polish + README overhaul
 # =============================================================================
@@ -16,15 +16,13 @@
 taskhub-api/
 │
 ├── app/
-│   ├── main.py                       # ✅ M5 UPDATED: Prometheus /metrics endpoint
+│   ├── main.py                       # M5: /metrics endpoint
 │   ├── config.py
 │   ├── db.py
 │   ├── security.py
 │   ├── events.py
 │   ├── idempotency.py
 │   ├── routes/
-│   │   ├── auth.py
-│   │   └── tasks.py
 │   ├── schemas/
 │   ├── models/
 │   ├── workers/
@@ -39,15 +37,15 @@ taskhub-api/
 │       ├── migration-task.tf
 │       ├── outputs.tf
 │       ├── provider.tf               # M2: remote state
-│       ├── variables.tf              # M2: updated
-│       ├── ecs.tf                    # M2: Secrets Manager ARNs
-│       ├── secrets.tf                # M2: Secrets Manager resources
-│       ├── monitoring.tf             # M2: CloudWatch alarms + SNS + dashboard
-│       ├── terraform.tfvars.example
+│       ├── variables.tf              # M2
+│       ├── ecs.tf                    # M2: Secrets Manager
+│       ├── secrets.tf                # M2
+│       ├── monitoring.tf             # M2: CloudWatch alarms
 │       ├── eks.tf                    # M4: EKS cluster
+│       ├── terraform.tfvars.example
 │       └── .terraform.lock.hcl
 │
-├── k8s/                              # M4: raw Kubernetes manifests
+├── k8s/                              # M4: Kubernetes manifests
 │   ├── configmap.yaml
 │   ├── deployment-api.yaml
 │   ├── deployment-worker.yaml
@@ -58,46 +56,40 @@ taskhub-api/
 │   ├── Chart.yaml
 │   ├── values.yaml
 │   └── templates/
-│       ├── _helpers.tpl
-│       ├── configmap.yaml
-│       ├── deployment-api.yaml
-│       ├── deployment-worker.yaml
-│       ├── service.yaml
-│       └── hpa.yaml
 │
-# ── M5: Monitoring Stack ─────────────────────────────────────────────────────
-├── monitoring/
-│   ├── docker-compose.monitoring.yml # ✅ NEW: Prometheus + Grafana services
-│   ├── prometheus.yml                # ✅ NEW: scrape config (taskhub-api + self)
-│   ├── grafana-dashboard.json        # ✅ NEW: pre-built dashboard (7 panels)
-│   └── grafana/
-│       └── provisioning/
-│           ├── datasources/
-│           │   └── prometheus.yml    # ✅ NEW: auto-configure Prometheus datasource
-│           └── dashboards/
-│               └── dashboards.yml    # ✅ NEW: auto-load dashboard on startup
-# ─────────────────────────────────────────────────────────────────────────────
+├── monitoring/                       # M5: Prometheus + Grafana
+│   ├── docker-compose.monitoring.yml
+│   ├── prometheus.yml
+│   ├── grafana-dashboard.json
+│   └── grafana/provisioning/
 │
-├── alembic/
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
-│   └── ECR.md
+│   ├── ECR.md
+│   # ── M6: Incident Response ─────────────────────────────────────────────
+│   ├── INCIDENTS.md                  # ✅ NEW: 3 scenarios (crash, celery, DB pool)
+│   └── OPERATIONS.md                 # ✅ NEW: ECS/K8s/Linux/Prometheus cheat sheet
+│   # ─────────────────────────────────────────────────────────────────────
 │
 ├── scripts/
+│   ├── push-to-ecr.sh
+│   └── run-migrations.sh
+│
+├── alembic/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                    # M3
 │       └── deploy.yml                # M3
 │
 ├── Jenkinsfile                       # M3
-├── Dockerfile                        # M1
+├── Dockerfile                        # M1: multi-stage
 ├── .dockerignore                     # M1
 ├── docker-compose.yml
 ├── docker-compose.override.yml       # M1
 ├── pytest.ini
-├── requirements.txt                  # ✅ M5 UPDATED: + prometheus-fastapi-instrumentator
+├── requirements.txt
 ├── .env.example
 ├── README.md
 └── project_structure.txt             # ✅ UPDATED this file
