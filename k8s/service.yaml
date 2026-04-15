@@ -1,0 +1,77 @@
+# =============================================================================
+# service.yaml — Kubernetes Service for TaskHub API
+#
+# SERVICE TYPES (interview question):
+#   ClusterIP    → internal only (default) — pods talk to each other
+#   NodePort     → exposes on each node's IP:port — basic external access
+#   LoadBalancer → provisions cloud load balancer (AWS ALB/NLB) — production
+#   ExternalName → maps to external DNS name — no proxying
+#
+# WHY CLUSTERIP HERE?
+#   The Service itself is ClusterIP (internal).
+#   External traffic comes in through an Ingress controller (AWS Load Balancer
+#   Controller) which routes to this Service.
+#   This is the production pattern — never expose pods directly.
+#
+# FLOW:
+#   Internet → AWS ALB (Ingress) → taskhub-api Service (ClusterIP) → pods
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# API Service — routes traffic to API pods
+# -----------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: taskhub-api
+  namespace: taskhub
+  labels:
+    app: taskhub
+    component: api
+spec:
+  type: ClusterIP
+  selector:
+    app: taskhub
+    component: api   # matches pods with this label — auto-updates as pods come/go
+  ports:
+    - name: http
+      port: 80          # port clients use to reach the Service
+      targetPort: 8000  # port the container listens on
+      protocol: TCP
+
+---
+# -----------------------------------------------------------------------------
+# Ingress — routes external traffic from AWS ALB to the Service
+#
+# Requires: AWS Load Balancer Controller installed in the cluster
+# Install: https://docs.aws.amazon.com/eks/latest/userguide/aws-load-balancer-controller.html
+#
+# The annotation kubernetes.io/ingress.class: alb tells the AWS LBC
+# to provision an Application Load Balancer for this Ingress.
+# -----------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: taskhub-api
+  namespace: taskhub
+  labels:
+    app: taskhub
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "30"
+    alb.ingress.kubernetes.io/healthy-threshold-count: "2"
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: "3"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: taskhub-api
+                port:
+                  number: 80

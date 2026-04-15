@@ -1,0 +1,188 @@
+# =============================================================================
+# deployment-api.yaml — FastAPI Application Deployment
+#
+# KEY DEVOPS CONCEPTS IN THIS FILE:
+#
+# 1. READINESS vs LIVENESS PROBES (most common K8s interview question)
+#
+#    readinessProbe:
+#      → "Is this pod ready to receive traffic?"
+#      → Failing: pod removed from Service endpoints (no traffic sent to it)
+#      → Use case: app still starting up, DB connection not ready yet
+#      → Your /health endpoint checks app is up — good enough for readiness
+#
+#    livenessProbe:
+#      → "Is this pod still alive and functioning?"
+#      → Failing: Kubernetes KILLS and RESTARTS the pod
+#      → Use case: app is deadlocked, memory leaked, stuck in bad state
+#      → More aggressive — only kill if truly broken
+#
+#    startupProbe:
+#      → "Has the app finished starting up?"
+#      → Disables liveness/readiness until this passes
+#      → Prevents liveness from killing a slow-starting pod
+#
+# 2. RESOURCE REQUESTS vs LIMITS
+#    requests: guaranteed resources — used for scheduling (which node fits?)
+#    limits:   maximum resources — enforced at runtime (OOMKill if exceeded)
+#    Rule: set requests = your typical usage, limits = your max acceptable usage
+#
+# 3. ROLLING UPDATE STRATEGY
+#    maxUnavailable: 0 → never take pods offline during deploy (zero downtime)
+#    maxSurge: 1       → spin up 1 extra pod during deploy, then remove old one
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskhub-api
+  namespace: taskhub
+  labels:
+    app: taskhub
+    component: api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: taskhub
+      component: api
+
+  # ---------------------------------------------------------------------------
+  # Rolling update — zero downtime deployment
+  # New pods start before old pods stop
+  # ---------------------------------------------------------------------------
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0   # never have fewer than desired replicas
+      maxSurge: 1         # allow 1 extra pod during rollout
+
+  template:
+    metadata:
+      labels:
+        app: taskhub
+        component: api
+    spec:
+
+      # -----------------------------------------------------------------------
+      # Security context — run as non-root (matches Dockerfile USER appuser)
+      # -----------------------------------------------------------------------
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        fsGroup: 1001
+
+      containers:
+        - name: api
+          # Replace with your actual ECR image URI
+          # In production this is templated by Helm or set via kubectl --set
+          image: 123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest
+          imagePullPolicy: Always    # always pull — never use stale cached image
+
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+
+          # -------------------------------------------------------------------
+          # Environment from ConfigMap (non-sensitive)
+          # -------------------------------------------------------------------
+          envFrom:
+            - configMapRef:
+                name: taskhub-config
+
+          # -------------------------------------------------------------------
+          # Sensitive env vars from Kubernetes Secret
+          # Create the secret separately (never commit the actual values):
+          #   kubectl create secret generic taskhub-secrets \
+          #     --from-literal=DATABASE_URL="postgresql+asyncpg://..." \
+          #     --from-literal=JWT_SECRET="your-secret" \
+          #     --from-literal=REDIS_BROKER="redis://..." \
+          #     -n taskhub
+          # -------------------------------------------------------------------
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskhub-secrets
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: taskhub-secrets
+                  key: JWT_SECRET
+            - name: REDIS_BROKER
+              valueFrom:
+                secretKeyRef:
+                  name: taskhub-secrets
+                  key: REDIS_BROKER
+
+          # -------------------------------------------------------------------
+          # Resource requests and limits
+          # requests: guaranteed — Kubernetes uses this for scheduling
+          # limits:   maximum — pod is OOMKilled if memory limit exceeded
+          # -------------------------------------------------------------------
+          resources:
+            requests:
+              cpu: "100m"      # 0.1 vCPU guaranteed
+              memory: "256Mi"  # 256MB guaranteed
+            limits:
+              cpu: "500m"      # 0.5 vCPU maximum
+              memory: "512Mi"  # 512MB maximum — OOMKill if exceeded
+
+          # -------------------------------------------------------------------
+          # Startup probe
+          # Gives the app up to 30s to start before liveness kicks in
+          # Prevents premature liveness kills on slow startup (DB connection)
+          # -------------------------------------------------------------------
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            failureThreshold: 6    # 6 × 5s = 30s max startup time
+            periodSeconds: 5
+
+          # -------------------------------------------------------------------
+          # Readiness probe
+          # Controls traffic routing — failing pod removed from Service
+          # Fires after startupProbe passes
+          # -------------------------------------------------------------------
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 0
+            periodSeconds: 10
+            failureThreshold: 3    # 3 failures = remove from Service
+            successThreshold: 1
+
+          # -------------------------------------------------------------------
+          # Liveness probe
+          # Controls pod restart — failing pod gets killed and restarted
+          # More lenient than readiness — only kill if truly unresponsive
+          # -------------------------------------------------------------------
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 0
+            periodSeconds: 30
+            failureThreshold: 3    # 3 failures = restart pod
+            timeoutSeconds: 5
+
+      # -----------------------------------------------------------------------
+      # Graceful shutdown — give in-flight requests time to complete
+      # FastAPI + uvicorn handles SIGTERM gracefully
+      # -----------------------------------------------------------------------
+      terminationGracePeriodSeconds: 30
+
+      # -----------------------------------------------------------------------
+      # Spread pods across availability zones for HA
+      # -----------------------------------------------------------------------
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: DoNotSchedule
+          labelSelector:
+            matchLabels:
+              app: taskhub
+              component: api

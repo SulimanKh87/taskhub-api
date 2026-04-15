@@ -1,0 +1,16 @@
+apiVersion: v2
+name: taskhub
+description: TaskHub API — FastAPI + PostgreSQL + Celery on Kubernetes
+type: application
+version: 0.1.0
+appVersion: "2.4.0"
+
+keywords:
+  - fastapi
+  - postgresql
+  - celery
+  - taskhub
+
+maintainers:
+  - name: Sami
+    email: your-email@example.com

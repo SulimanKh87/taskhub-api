@@ -1,0 +1,85 @@
+# =============================================================================
+# hpa.yaml — Horizontal Pod Autoscaler
+#
+# WHAT HPA DOES:
+#   Automatically scales the number of pod replicas based on observed metrics.
+#   CPU hits 70%? Add a replica. CPU drops? Remove a replica.
+#
+# HOW IT WORKS:
+#   1. Metrics Server (must be installed) collects CPU/memory from pods
+#   2. HPA controller checks metrics every 15 seconds
+#   3. Desired replicas = ceil(current replicas × current_metric / target_metric)
+#   4. Scale-up: fast (30s cooldown)
+#   5. Scale-down: slow (5 min cooldown) — prevents flapping
+#
+# REQUIRES:
+#   kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+#
+# INTERVIEW ANSWER:
+#   "HPA scales pods horizontally based on CPU or custom metrics.
+#    I set CPU target at 70% — gives headroom before the pod is saturated.
+#    Scale-down has a 5-minute stabilization window to prevent thrashing
+#    where pods are constantly added and removed."
+# =============================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: taskhub-api
+  namespace: taskhub
+  labels:
+    app: taskhub
+    component: api
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: taskhub-api
+
+  minReplicas: 2   # always run at least 2 for HA (survives 1 pod crash)
+  maxReplicas: 8   # cap to control costs + DB connection limits
+
+  metrics:
+    # -------------------------------------------------------------------------
+    # CPU-based scaling (primary)
+    # Scale up when average CPU across all pods exceeds 70%
+    # -------------------------------------------------------------------------
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+    # -------------------------------------------------------------------------
+    # Memory-based scaling (secondary)
+    # Scale up when average memory exceeds 80%
+    # Memory leaks show up here before they cause OOMKills
+    # -------------------------------------------------------------------------
+    - type: Resource
+      resource:
+        name: memory
+        target:
+          type: Utilization
+          averageUtilization: 80
+
+  behavior:
+    # -------------------------------------------------------------------------
+    # Scale-up: aggressive — respond quickly to traffic spikes
+    # -------------------------------------------------------------------------
+    scaleUp:
+      stabilizationWindowSeconds: 30   # wait 30s before scaling up again
+      policies:
+        - type: Pods
+          value: 2                     # add at most 2 pods per scale event
+          periodSeconds: 60
+
+    # -------------------------------------------------------------------------
+    # Scale-down: conservative — prevent flapping
+    # Wait 5 minutes of sustained low usage before removing pods
+    # -------------------------------------------------------------------------
+    scaleDown:
+      stabilizationWindowSeconds: 300  # 5 minutes before scaling down
+      policies:
+        - type: Pods
+          value: 1                     # remove at most 1 pod per scale event
+          periodSeconds: 60

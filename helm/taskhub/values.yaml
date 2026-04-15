@@ -1,0 +1,140 @@
+# =============================================================================
+# values.yaml — Default Helm values for TaskHub
+#
+# WHY HELM OVER PLAIN KUBECTL?
+#   kubectl apply -f k8s/ deploys one fixed config.
+#   Helm lets you deploy the same chart with different values per environment:
+#     helm install taskhub ./helm/taskhub -f values.dev.yaml
+#     helm install taskhub ./helm/taskhub -f values.prod.yaml
+#
+#   Override any value at deploy time:
+#     helm upgrade taskhub ./helm/taskhub --set api.image.tag=abc123
+#
+# INTERVIEW ANSWER:
+#   "Helm is a package manager for Kubernetes. The chart is the template,
+#    values.yaml provides defaults, and you override per environment.
+#    It handles versioned releases, rollbacks, and upgrade diffs."
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Namespace
+# -----------------------------------------------------------------------------
+namespace: taskhub
+
+# -----------------------------------------------------------------------------
+# API deployment
+# -----------------------------------------------------------------------------
+api:
+  image:
+    repository: 123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api
+    tag: latest
+    pullPolicy: Always
+
+  replicas: 2
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+  # Probes — paths must match your FastAPI /health endpoint
+  probes:
+    readiness:
+      path: /health
+      port: 8000
+      initialDelaySeconds: 0
+      periodSeconds: 10
+      failureThreshold: 3
+    liveness:
+      path: /health
+      port: 8000
+      periodSeconds: 30
+      failureThreshold: 3
+      timeoutSeconds: 5
+    startup:
+      path: /health
+      port: 8000
+      failureThreshold: 6
+      periodSeconds: 5
+
+  service:
+    type: ClusterIP
+    port: 80
+    targetPort: 8000
+
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 8
+    cpuTargetUtilization: 70
+    memoryTargetUtilization: 80
+
+# -----------------------------------------------------------------------------
+# Worker deployment
+# -----------------------------------------------------------------------------
+worker:
+  image:
+    repository: 123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api
+    tag: latest
+    pullPolicy: Always
+
+  replicas: 1
+
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "300m"
+      memory: "256Mi"
+
+  concurrency: 2
+
+# -----------------------------------------------------------------------------
+# Application config (non-sensitive — goes into ConfigMap)
+# -----------------------------------------------------------------------------
+config:
+  APP_NAME: "taskhub-api"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  ENV: "production"
+  PORT: "8000"
+  AWS_REGION: "eu-central-1"
+  EVENT_BUS_NAME: "default"
+  JWT_ALGORITHM: "HS256"
+  JWT_EXPIRE_MINUTES: "15"
+  JWT_REFRESH_DAYS: "7"
+  DB_POOL_SIZE: "5"
+  DB_MAX_OVERFLOW: "5"
+  DB_POOL_TIMEOUT: "30"
+  DB_POOL_RECYCLE_SECONDS: "1800"
+
+# -----------------------------------------------------------------------------
+# Secrets — names of Kubernetes Secret keys
+# The actual Secret must be created separately (never committed to Git):
+#   kubectl create secret generic taskhub-secrets \
+#     --from-literal=DATABASE_URL="..." \
+#     --from-literal=JWT_SECRET="..." \
+#     --from-literal=REDIS_BROKER="..." \
+#     -n taskhub
+# -----------------------------------------------------------------------------
+secrets:
+  secretName: taskhub-secrets
+  databaseUrlKey: DATABASE_URL
+  jwtSecretKey: JWT_SECRET
+  redisBrokerKey: REDIS_BROKER
+
+# -----------------------------------------------------------------------------
+# Ingress
+# -----------------------------------------------------------------------------
+ingress:
+  enabled: true
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+  host: ""   # set to your domain, e.g. api.taskhub.io

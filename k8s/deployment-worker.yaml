@@ -1,0 +1,107 @@
+# =============================================================================
+# deployment-worker.yaml — Celery Worker Deployment
+#
+# KEY DIFFERENCES FROM API DEPLOYMENT:
+#   - No ports exposed (worker pulls from Redis, doesn't serve HTTP)
+#   - No readiness/liveness probes on HTTP — worker health via Celery inspect
+#   - No Service or Ingress needed
+#   - No topologySpreadConstraints — workers don't need HA distribution
+#   - Lower resource limits — workers process one task at a time
+#   - Same image as API — ECS/K8s overrides the command
+# =============================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: taskhub-worker
+  namespace: taskhub
+  labels:
+    app: taskhub
+    component: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskhub
+      component: worker
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1   # worker can be briefly unavailable during deploy
+      maxSurge: 1
+
+  template:
+    metadata:
+      labels:
+        app: taskhub
+        component: worker
+    spec:
+
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+
+      containers:
+        - name: worker
+          image: 123456789012.dkr.ecr.eu-central-1.amazonaws.com/taskhub-dev-api:latest
+          imagePullPolicy: Always
+
+          # Override the default CMD from Dockerfile
+          # Same image as API — different entrypoint
+          command:
+            - celery
+            - -A
+            - app.workers.celery_app:celery_app
+            - worker
+            - --loglevel=info
+            - --concurrency=2
+
+          envFrom:
+            - configMapRef:
+                name: taskhub-config
+
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: taskhub-secrets
+                  key: DATABASE_URL
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: taskhub-secrets
+                  key: JWT_SECRET
+            - name: REDIS_BROKER
+              valueFrom:
+                secretKeyRef:
+                  name: taskhub-secrets
+                  key: REDIS_BROKER
+
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+
+          # -------------------------------------------------------------------
+          # Worker liveness — uses Celery inspect ping not HTTP
+          # If the worker process is stuck, this kills and restarts it
+          # -------------------------------------------------------------------
+          livenessProbe:
+            exec:
+              command:
+                - celery
+                - -A
+                - app.workers.celery_app:celery_app
+                - inspect
+                - ping
+                - -d
+                - celery@$HOSTNAME
+            initialDelaySeconds: 30
+            periodSeconds: 60
+            failureThreshold: 3
+            timeoutSeconds: 10
+
+      terminationGracePeriodSeconds: 60   # longer than API — let current task finish

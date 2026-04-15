@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "taskhub.fullname" . }}-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "taskhub.labels" . | nindent 4 }}
+    component: api
+spec:
+  type: {{ .Values.api.service.type }}
+  selector:
+    {{- include "taskhub.selectorLabels" . | nindent 4 }}
+    component: api
+  ports:
+    - name: http
+      port: {{ .Values.api.service.port }}
+      targetPort: {{ .Values.api.service.targetPort }}
+      protocol: TCP
+
+---
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "taskhub.fullname" . }}-api
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "taskhub.labels" . | nindent 4 }}
+  annotations:
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+spec:
+  rules:
+    - {{- if .Values.ingress.host }}
+      host: {{ .Values.ingress.host }}
+      {{- end }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "taskhub.fullname" . }}-api
+                port:
+                  number: {{ .Values.api.service.port }}
+{{- end }}
