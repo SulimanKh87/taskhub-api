@@ -1,101 +1,158 @@
 # =============================================================================
-# TaskHub API — Project Structure
-# Last updated: Milestone 7 (Cost & Scaling)
+# TaskHub API — Final Project Structure
+# Last updated: Milestone 8 (Interview Polish + README Overhaul)
 #
-# Milestone history:
+# ALL MILESTONES COMPLETE ✅
+#
 #   M1 ✅ Docker production hardening
+#          Dockerfile (multi-stage, ~180MB), .dockerignore,
+#          docker-compose.override.yml (hot reload + Flower)
+#
 #   M2 ✅ Terraform production structure
+#          S3 remote state, DynamoDB locking, Secrets Manager,
+#          CloudWatch alarms + SNS, FARGATE_SPOT worker
+#
 #   M3 ✅ CI/CD hardening
+#          ci.yml (test-only), deploy.yml (build→scan→push→deploy→rollback),
+#          Trivy image scanning, Jenkinsfile
+#
 #   M4 ✅ Kubernetes + Helm
+#          k8s/ manifests (probes, HPA, Ingress), helm/taskhub/ chart,
+#          infra/terraform/eks.tf
+#
 #   M5 ✅ Monitoring stack
+#          /metrics endpoint, Prometheus scrape config,
+#          Grafana 7-panel dashboard, auto-provisioning
+#
 #   M6 ✅ Incident response docs
-#   M7 ✅ Cost & scaling awareness (COST.md, Fargate Spot already in ecs.tf)
-#   M8 ⏳ Interview polish + README overhaul
+#          INCIDENTS.md (3 runbooks with CLI commands),
+#          OPERATIONS.md (AWS/K8s/Linux/Prometheus cheat sheet)
+#
+#   M7 ✅ Cost & scaling awareness
+#          COST.md (~$66/month breakdown, 5 reduction strategies,
+#          DB connection math, cost vs reliability tradeoff table)
+#
+#   M8 ✅ Interview polish + README overhaul
+#          README.md (DevOps story-first), AWS_DEPLOY.md (final checklist)
 # =============================================================================
 
 taskhub-api/
 │
 ├── app/
-│   ├── main.py                       # M5: /metrics endpoint
+│   ├── __init__.py
+│   ├── main.py                            # M5: /metrics endpoint added
 │   ├── config.py
 │   ├── db.py
 │   ├── security.py
 │   ├── events.py
 │   ├── idempotency.py
 │   ├── routes/
+│   │   ├── auth.py
+│   │   └── tasks.py
 │   ├── schemas/
+│   │   ├── user_schema.py
+│   │   ├── task_schema.py
+│   │   ├── pagination_schema.py
+│   │   └── token_schema.py
 │   ├── models/
+│   │   ├── base.py
+│   │   ├── user.py
+│   │   ├── task.py
+│   │   └── job_log.py
 │   ├── workers/
+│   │   ├── __init__.py
+│   │   ├── celery_app.py
+│   │   └── tasks/
+│   │       ├── __init__.py
+│   │       └── email_tasks.py
 │   └── tests/
+│       ├── conftest.py
+│       ├── test_api.py
+│       ├── test_tasks.py
+│       └── test_idempotency.py
 │
 ├── infra/
+│   ├── ecs-tasks/
+│   │   ├── api-task-definition.json
+│   │   └── worker-task-definition.json
 │   └── terraform/
-│       ├── main.tf
-│       ├── iam.tf
-│       ├── ecr.tf
-│       ├── lambda.tf
-│       ├── migration-task.tf
+│       ├── main.tf                        # VPC, subnets, SGs, RDS, Redis, ALB
+│       ├── iam.tf                         # IAM roles
+│       ├── ecr.tf                         # ECR repos + lifecycle
+│       ├── lambda.tf                      # EventBridge + Lambda
+│       ├── migration-task.tf              # Alembic ECS task
 │       ├── outputs.tf
-│       ├── provider.tf               # M2: remote state
-│       ├── variables.tf              # M2
-│       ├── ecs.tf                    # M2: Secrets Manager + M7: FARGATE_SPOT
-│       ├── secrets.tf                # M2
-│       ├── monitoring.tf             # M2: CloudWatch alarms
-│       ├── eks.tf                    # M4: EKS cluster
-│       ├── terraform.tfvars.example
-│       └── .terraform.lock.hcl
+│       ├── .terraform.lock.hcl
+│       ├── provider.tf                    # M2: S3 remote state + DynamoDB locking
+│       ├── variables.tf                   # M2: updated vars
+│       ├── ecs.tf                         # M2: Secrets Manager + FARGATE_SPOT
+│       ├── secrets.tf                     # M2: Secrets Manager resources
+│       ├── monitoring.tf                  # M2: CloudWatch alarms + SNS + dashboard
+│       ├── eks.tf                         # M4: EKS cluster (K8s reference)
+│       └── terraform.tfvars.example       # M2: safe-to-commit example
 │
-├── k8s/                              # M4: Kubernetes manifests
+├── k8s/                                   # M4: Kubernetes raw manifests
 │   ├── configmap.yaml
-│   ├── deployment-api.yaml
-│   ├── deployment-worker.yaml
-│   ├── service.yaml
-│   └── hpa.yaml
+│   ├── deployment-api.yaml                # readiness + liveness + startup probes
+│   ├── deployment-worker.yaml             # Celery exec liveness probe
+│   ├── service.yaml                       # ClusterIP + ALB Ingress
+│   └── hpa.yaml                           # CPU 70% + memory 80% autoscaling
 │
-├── helm/taskhub/                     # M4: Helm chart
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   └── templates/
-│       ├── _helpers.tpl
-│       ├── configmap.yaml
-│       ├── deployment-api.yaml
-│       ├── deployment-worker.yaml
-│       ├── service.yaml
-│       └── hpa.yaml
+├── helm/                                  # M4: Helm chart
+│   └── taskhub/
+│       ├── Chart.yaml
+│       ├── values.yaml                    # all defaults, overridable per env
+│       └── templates/
+│           ├── _helpers.tpl
+│           ├── configmap.yaml
+│           ├── deployment-api.yaml
+│           ├── deployment-worker.yaml
+│           ├── service.yaml
+│           └── hpa.yaml
 │
-├── monitoring/                       # M5: Prometheus + Grafana
+├── monitoring/                            # M5: Prometheus + Grafana
 │   ├── docker-compose.monitoring.yml
 │   ├── prometheus.yml
-│   ├── grafana-dashboard.json
-│   └── grafana/provisioning/
-│       ├── datasources/prometheus.yml
-│       └── dashboards/dashboards.yml
+│   ├── grafana-dashboard.json             # 7-panel production dashboard
+│   └── grafana/
+│       └── provisioning/
+│           ├── datasources/
+│           │   └── prometheus.yml
+│           └── dashboards/
+│               └── dashboards.yml
 │
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
 │   ├── ECR.md
-│   ├── INCIDENTS.md                  # M6: 3 incident scenarios
-│   ├── OPERATIONS.md                 # M6: debugging cheat sheet
-│   # ── M7: Cost & Scaling ───────────────────────────────────────────────
-│   └── COST.md                       # ✅ NEW: breakdown + 5 reduction strategies
-│   # ─────────────────────────────────────────────────────────────────────
+│   ├── INCIDENTS.md                       # M6: 3 runbooks with CLI commands
+│   ├── OPERATIONS.md                      # M6: AWS/K8s/Linux cheat sheet
+│   ├── COST.md                            # M7: breakdown + 5 reduction strategies
+│   └── AWS_DEPLOY.md                      # M8: final AWS deployment checklist
 │
 ├── scripts/
+│   ├── push-to-ecr.sh
+│   └── run-migrations.sh
+│
 ├── alembic/
+│   ├── env.py
+│   ├── script.py.mako
+│   └── versions/
+│       └── 0001_init_schema.py
+│
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                    # M3
-│       └── deploy.yml                # M3
+│       ├── ci.yml                         # M3: test + validate (all branches)
+│       └── deploy.yml                     # M3: build→scan→push→deploy→rollback
 │
-├── Jenkinsfile                       # M3
-├── Dockerfile                        # M1: multi-stage
-├── .dockerignore                     # M1
-├── docker-compose.yml
-├── docker-compose.override.yml       # M1
+├── Jenkinsfile                            # M3: Jenkins pipeline reference
+├── Dockerfile                             # M1: multi-stage (builder + runtime)
+├── .dockerignore                          # M1: excludes secrets/infra/tests
+├── docker-compose.yml                     # base service definitions
+├── docker-compose.override.yml            # M1: hot reload + Flower (dev only)
 ├── pytest.ini
 ├── requirements.txt
 ├── .env.example
-├── README.md
-└── project_structure.txt             # ✅ UPDATED this file
+├── README.md                              # M8: DevOps story-first rewrite
+└── project_structure.txt                  # M8: this file — all milestones complete
