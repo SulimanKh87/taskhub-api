@@ -1,6 +1,6 @@
 # =============================================================================
 # TaskHub API — Project Structure
-# Last updated: Milestone 6 (Incident Response Docs)
+# Last updated: Milestone 7 (Cost & Scaling)
 #
 # Milestone history:
 #   M1 ✅ Docker production hardening
@@ -8,8 +8,8 @@
 #   M3 ✅ CI/CD hardening
 #   M4 ✅ Kubernetes + Helm
 #   M5 ✅ Monitoring stack
-#   M6 ✅ Incident response docs (INCIDENTS.md, OPERATIONS.md)
-#   M7 ⏳ Cost & scaling awareness (COST.md)
+#   M6 ✅ Incident response docs
+#   M7 ✅ Cost & scaling awareness (COST.md, Fargate Spot already in ecs.tf)
 #   M8 ⏳ Interview polish + README overhaul
 # =============================================================================
 
@@ -38,7 +38,7 @@ taskhub-api/
 │       ├── outputs.tf
 │       ├── provider.tf               # M2: remote state
 │       ├── variables.tf              # M2
-│       ├── ecs.tf                    # M2: Secrets Manager
+│       ├── ecs.tf                    # M2: Secrets Manager + M7: FARGATE_SPOT
 │       ├── secrets.tf                # M2
 │       ├── monitoring.tf             # M2: CloudWatch alarms
 │       ├── eks.tf                    # M4: EKS cluster
@@ -56,27 +56,33 @@ taskhub-api/
 │   ├── Chart.yaml
 │   ├── values.yaml
 │   └── templates/
+│       ├── _helpers.tpl
+│       ├── configmap.yaml
+│       ├── deployment-api.yaml
+│       ├── deployment-worker.yaml
+│       ├── service.yaml
+│       └── hpa.yaml
 │
 ├── monitoring/                       # M5: Prometheus + Grafana
 │   ├── docker-compose.monitoring.yml
 │   ├── prometheus.yml
 │   ├── grafana-dashboard.json
 │   └── grafana/provisioning/
+│       ├── datasources/prometheus.yml
+│       └── dashboards/dashboards.yml
 │
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── SECURITY.md
 │   ├── FAILURE_MODES.md
 │   ├── ECR.md
-│   # ── M6: Incident Response ─────────────────────────────────────────────
-│   ├── INCIDENTS.md                  # ✅ NEW: 3 scenarios (crash, celery, DB pool)
-│   └── OPERATIONS.md                 # ✅ NEW: ECS/K8s/Linux/Prometheus cheat sheet
+│   ├── INCIDENTS.md                  # M6: 3 incident scenarios
+│   ├── OPERATIONS.md                 # M6: debugging cheat sheet
+│   # ── M7: Cost & Scaling ───────────────────────────────────────────────
+│   └── COST.md                       # ✅ NEW: breakdown + 5 reduction strategies
 │   # ─────────────────────────────────────────────────────────────────────
 │
 ├── scripts/
-│   ├── push-to-ecr.sh
-│   └── run-migrations.sh
-│
 ├── alembic/
 ├── .github/
 │   └── workflows/
