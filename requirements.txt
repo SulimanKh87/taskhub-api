@@ -46,3 +46,10 @@ email-validator==2.3.0           # Email validation (UserCreate schema)
 boto3>=1.34.0                    # AWS SDK for EventBridge, S3, etc.
 
 prometheus-fastapi-instrumentator==7.0.0
+
+# =========================
+# Development Tools
+# =========================
+watchdog>=4.0.0                  # File watcher for Celery hot reload (dev only)
+
+bcrypt==4.0.1                    # pin to avoid passlib wrap-bug on Python 3.12
