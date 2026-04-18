@@ -1,158 +1,148 @@
 # =============================================================================
-# TaskHub API — Final Project Structure
-# Last updated: Milestone 8 (Interview Polish + README Overhaul)
+# TaskHub API — Project Structure
+# Last updated: Post-testing (all 8 milestones complete + CI fixes)
 #
-# ALL MILESTONES COMPLETE ✅
+# This structure reflects the ACTUAL file paths in the repository,
+# verified from the path comment at the top of each file.
 #
+# Milestone history:
 #   M1 ✅ Docker production hardening
-#          Dockerfile (multi-stage, ~180MB), .dockerignore,
-#          docker-compose.override.yml (hot reload + Flower)
-#
 #   M2 ✅ Terraform production structure
-#          S3 remote state, DynamoDB locking, Secrets Manager,
-#          CloudWatch alarms + SNS, FARGATE_SPOT worker
-#
 #   M3 ✅ CI/CD hardening
-#          ci.yml (test-only), deploy.yml (build→scan→push→deploy→rollback),
-#          Trivy image scanning, Jenkinsfile
-#
 #   M4 ✅ Kubernetes + Helm
-#          k8s/ manifests (probes, HPA, Ingress), helm/taskhub/ chart,
-#          infra/terraform/eks.tf
-#
 #   M5 ✅ Monitoring stack
-#          /metrics endpoint, Prometheus scrape config,
-#          Grafana 7-panel dashboard, auto-provisioning
-#
 #   M6 ✅ Incident response docs
-#          INCIDENTS.md (3 runbooks with CLI commands),
-#          OPERATIONS.md (AWS/K8s/Linux/Prometheus cheat sheet)
-#
 #   M7 ✅ Cost & scaling awareness
-#          COST.md (~$66/month breakdown, 5 reduction strategies,
-#          DB connection math, cost vs reliability tradeoff table)
-#
 #   M8 ✅ Interview polish + README overhaul
-#          README.md (DevOps story-first), AWS_DEPLOY.md (final checklist)
 # =============================================================================
 
 taskhub-api/
 │
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                            # M5: /metrics endpoint added
-│   ├── config.py
-│   ├── db.py
-│   ├── security.py
-│   ├── events.py
-│   ├── idempotency.py
+│   ├── main.py                            # FastAPI entrypoint, middleware, /metrics
+│   ├── config.py                          # Settings via pydantic-settings + .env
+│   ├── db.py                              # Async SQLAlchemy engine + session factory
+│   ├── events.py                          # EventBridge publisher helpers (prod-only)
+│   ├── idempotency.py                     # SQL-backed idempotent job helpers
+│   │
 │   ├── routes/
-│   │   ├── auth.py
-│   │   └── tasks.py
-│   ├── schemas/
+│   │   ├── auth.py                        # Register + login endpoints
+│   │   └── tasks.py                       # Task CRUD + paginated list
+│   │
+│   ├── schemas/                           # Pydantic v2 API contracts
 │   │   ├── user_schema.py
 │   │   ├── task_schema.py
 │   │   ├── pagination_schema.py
 │   │   └── token_schema.py
-│   ├── models/
+│   │
+│   ├── models/                            # SQLAlchemy ORM models
 │   │   ├── base.py
 │   │   ├── user.py
 │   │   ├── task.py
 │   │   └── job_log.py
+│   │
 │   ├── workers/
 │   │   ├── __init__.py
-│   │   ├── celery_app.py
+│   │   ├── celery_app.py                  # Celery app instance + broker config
 │   │   └── tasks/
 │   │       ├── __init__.py
-│   │       └── email_tasks.py
+│   │       └── email_tasks.py             # Background email task definitions
+│   │
+│   ├── utils/
+│   │   └── security.py                    # Password hashing + JWT helpers
+│   │
 │   └── tests/
-│       ├── conftest.py
-│       ├── test_api.py
-│       ├── test_tasks.py
-│       └── test_idempotency.py
+│       ├── conftest.py                    # Fixtures: schema, clean_db, Celery mock
+│       ├── test_api.py                    # Health check + auth endpoint tests
+│       ├── test_tasks.py                  # Task CRUD + pagination tests
+│       └── test_idempotency.py            # Idempotent job execution tests
+│
+├── alembic/
+│   ├── env.py                             # Async migration runner
+│   ├── script.py.mako                     # Migration file template
+│   └── versions/
+│       └── 0001_init_schema.py            # Initial schema migration
 │
 ├── infra/
 │   ├── ecs-tasks/
-│   │   ├── api-task-definition.json
-│   │   └── worker-task-definition.json
+│   │   ├── api-task-definition.json       # ECS API task definition (reference)
+│   │   └── worker-task-definition.json    # ECS worker task definition (reference)
 │   └── terraform/
 │       ├── main.tf                        # VPC, subnets, SGs, RDS, Redis, ALB
-│       ├── iam.tf                         # IAM roles
-│       ├── ecr.tf                         # ECR repos + lifecycle
-│       ├── lambda.tf                      # EventBridge + Lambda
-│       ├── migration-task.tf              # Alembic ECS task
-│       ├── outputs.tf
-│       ├── .terraform.lock.hcl
-│       ├── provider.tf                    # M2: S3 remote state + DynamoDB locking
-│       ├── variables.tf                   # M2: updated vars
-│       ├── ecs.tf                         # M2: Secrets Manager + FARGATE_SPOT
-│       ├── secrets.tf                     # M2: Secrets Manager resources
-│       ├── monitoring.tf                  # M2: CloudWatch alarms + SNS + dashboard
-│       ├── eks.tf                         # M4: EKS cluster (K8s reference)
-│       └── terraform.tfvars.example       # M2: safe-to-commit example
+│       ├── ecs.tf                         # ECS cluster, task defs, Secrets Manager
+│       ├── iam.tf                         # IAM roles (task_exec + task_role)
+│       ├── ecr.tf                         # ECR repos + lifecycle policies
+│       ├── lambda.tf                      # EventBridge rule + Lambda
+│       ├── migration-task.tf              # Alembic migration ECS task
+│       ├── alarms.tf                      # CloudWatch alarms + SNS topic
+│       ├── autoscaling.tf                 # ECS App Autoscaling (CPU + memory)
+│       ├── secrets.tf                     # Secrets Manager (db_password, jwt_secret)
+│       ├── monitoring.tf                  # CloudWatch dashboard
+│       ├── eks.tf                         # EKS cluster (interview reference)
+│       ├── provider.tf                    # AWS provider + S3 remote state backend
+│       ├── variables.tf                   # All input variables with defaults
+│       ├── outputs.tf                     # Resource output values
+│       ├── terraform.tfvars.example       # Safe-to-commit example values
+│       └── .terraform.lock.hcl           # Provider version lock file
 │
-├── k8s/                                   # M4: Kubernetes raw manifests
-│   ├── configmap.yaml
-│   ├── deployment-api.yaml                # readiness + liveness + startup probes
-│   ├── deployment-worker.yaml             # Celery exec liveness probe
-│   ├── service.yaml                       # ClusterIP + ALB Ingress
-│   └── hpa.yaml                           # CPU 70% + memory 80% autoscaling
+├── k8s/                                   # Raw Kubernetes manifests
+│   ├── configmap.yaml                     # Non-sensitive env vars
+│   ├── deployment-api.yaml                # API deployment (probes, resources)
+│   ├── deployment-worker.yaml             # Celery worker deployment
+│   ├── service.yaml                       # ClusterIP service + ALB Ingress
+│   └── hpa.yaml                           # Horizontal Pod Autoscaler
 │
-├── helm/                                  # M4: Helm chart
+├── helm/
 │   └── taskhub/
-│       ├── Chart.yaml
-│       ├── values.yaml                    # all defaults, overridable per env
+│       ├── Chart.yaml                     # Chart metadata
+│       ├── values.yaml                    # Default values (overridable per env)
 │       └── templates/
-│           ├── _helpers.tpl
+│           ├── _helpers.tpl               # Reusable label helpers
 │           ├── configmap.yaml
 │           ├── deployment-api.yaml
 │           ├── deployment-worker.yaml
 │           ├── service.yaml
 │           └── hpa.yaml
 │
-├── monitoring/                            # M5: Prometheus + Grafana
-│   ├── docker-compose.monitoring.yml
-│   ├── prometheus.yml
+├── monitoring/
+│   ├── docker-compose.monitoring.yml      # Prometheus + Grafana services
+│   ├── prometheus.yml                     # Scrape config (API + self)
 │   ├── grafana-dashboard.json             # 7-panel production dashboard
 │   └── grafana/
 │       └── provisioning/
 │           ├── datasources/
-│           │   └── prometheus.yml
+│           │   └── prometheus.yml         # Auto-configure Prometheus datasource
 │           └── dashboards/
-│               └── dashboards.yml
+│               └── dashboards.yml         # Auto-load dashboard on startup
 │
 ├── docs/
-│   ├── ARCHITECTURE.md
-│   ├── SECURITY.md
-│   ├── FAILURE_MODES.md
-│   ├── ECR.md
-│   ├── INCIDENTS.md                       # M6: 3 runbooks with CLI commands
-│   ├── OPERATIONS.md                      # M6: AWS/K8s/Linux cheat sheet
-│   ├── COST.md                            # M7: breakdown + 5 reduction strategies
-│   └── AWS_DEPLOY.md                      # M8: final AWS deployment checklist
+│   ├── ARCHITECTURE.md                    # System design + data flow
+│   ├── SECURITY.md                        # Auth, secrets, OWASP headers
+│   ├── FAILURE_MODES.md                   # Per-layer failure + recovery
+│   ├── ECR.md                             # ECR push guide
+│   ├── INCIDENTS.md                       # 3 runbooks with CLI commands
+│   ├── OPERATIONS.md                      # AWS/K8s/Linux/Prometheus cheat sheet
+│   ├── COST.md                            # Monthly breakdown + reduction strategies
+│   └── AWS_DEPLOY.md                      # Final AWS deployment checklist
 │
 ├── scripts/
-│   ├── push-to-ecr.sh
-│   └── run-migrations.sh
-│
-├── alembic/
-│   ├── env.py
-│   ├── script.py.mako
-│   └── versions/
-│       └── 0001_init_schema.py
+│   ├── push-to-ecr.sh                     # Build + tag + push to ECR
+│   └── run-migrations.sh                  # Run Alembic migrations via ECS task
 │
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                         # M3: test + validate (all branches)
-│       └── deploy.yml                     # M3: build→scan→push→deploy→rollback
+│       ├── ci.yml                         # Test + lint + terraform validate
+│       └── deploy.yml                     # Build → scan → push → deploy → rollback
 │
-├── Jenkinsfile                            # M3: Jenkins pipeline reference
-├── Dockerfile                             # M1: multi-stage (builder + runtime)
-├── .dockerignore                          # M1: excludes secrets/infra/tests
-├── docker-compose.yml                     # base service definitions
-├── docker-compose.override.yml            # M1: hot reload + Flower (dev only)
-├── pytest.ini
-├── requirements.txt
-├── .env.example
-├── README.md                              # M8: DevOps story-first rewrite
-└── project_structure.txt                  # M8: this file — all milestones complete
+├── Jenkinsfile                            # Jenkins pipeline (interview reference)
+├── Dockerfile                             # Multi-stage build (builder + runtime)
+├── .dockerignore                          # Excludes secrets, infra, tests, git
+├── docker-compose.yml                     # Base stack (API, worker, PG, Redis)
+├── docker-compose.override.yml            # Local dev: hot reload + Flower UI
+├── alembic.ini                            # Alembic configuration
+├── pytest.ini                             # Pytest configuration + asyncio mode
+├── requirements.txt                       # Python dependencies (pinned versions)
+├── .env.example                           # Safe-to-commit env var template
+├── README.md                              # DevOps story-first project overview
+└── project_structure.txt                  # This file
