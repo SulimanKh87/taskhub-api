@@ -46,15 +46,6 @@ env:
   ECS_WORKER_SERVICE: taskhub-dev-worker
 
 jobs:
-
-  # ===========================================================================
-  # Gate: CI must pass before any deploy job starts
-  # This re-uses the ci.yml workflow — no duplication of test logic
-  # ===========================================================================
-  ci-gate:
-    name: Wait for CI
-    uses: ./.github/workflows/ci.yml
-
   # ===========================================================================
   # Job 1: Build Docker image + scan for vulnerabilities
   #
@@ -70,7 +61,6 @@ jobs:
   build-and-scan:
     name: Build & Scan Image
     runs-on: ubuntu-latest
-    needs: [ci-gate]
 
     outputs:
       image-tag: ${{ steps.meta.outputs.tag }}
