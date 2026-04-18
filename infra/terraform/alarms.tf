@@ -3,9 +3,6 @@
 # CloudWatch Alarms for Production Monitoring
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# SNS Topic for Alarm Notifications
-# -----------------------------------------------------------------------------
 resource "aws_sns_topic" "alarms" {
   name = "${local.name}-alarms"
 
@@ -17,14 +14,14 @@ resource "aws_sns_topic" "alarms" {
 resource "aws_sns_topic_subscription" "alarms_email" {
   topic_arn = aws_sns_topic.alarms.arn
   protocol  = "email"
-  endpoint  = var.alarm_email
+  # Fixed: was var.alarm_email — correct name is var.alert_email
+  endpoint = var.alert_email
 }
 
 # -----------------------------------------------------------------------------
 # API Service Alarms
 # -----------------------------------------------------------------------------
 
-# High CPU Usage
 resource "aws_cloudwatch_metric_alarm" "api_cpu_high" {
   alarm_name          = "${local.name}-api-cpu-high"
   comparison_operator = "GreaterThanThreshold"
@@ -38,12 +35,12 @@ resource "aws_cloudwatch_metric_alarm" "api_cpu_high" {
   alarm_actions       = [aws_sns_topic.alarms.arn]
 
   dimensions = {
-    ClusterName = aws_ecs_cluster.this.name
+    # Fixed: was aws_ecs_cluster.this — correct name is aws_ecs_cluster.main
+    ClusterName = aws_ecs_cluster.main.name
     ServiceName = aws_ecs_service.api.name
   }
 }
 
-# High Memory Usage
 resource "aws_cloudwatch_metric_alarm" "api_memory_high" {
   alarm_name          = "${local.name}-api-memory-high"
   comparison_operator = "GreaterThanThreshold"
@@ -57,12 +54,11 @@ resource "aws_cloudwatch_metric_alarm" "api_memory_high" {
   alarm_actions       = [aws_sns_topic.alarms.arn]
 
   dimensions = {
-    ClusterName = aws_ecs_cluster.this.name
+    ClusterName = aws_ecs_cluster.main.name
     ServiceName = aws_ecs_service.api.name
   }
 }
 
-# 5xx Error Rate (ALB)
 resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
   alarm_name          = "${local.name}-api-5xx-errors"
   comparison_operator = "GreaterThanThreshold"
@@ -82,7 +78,6 @@ resource "aws_cloudwatch_metric_alarm" "api_5xx_errors" {
   }
 }
 
-# Unhealthy Targets
 resource "aws_cloudwatch_metric_alarm" "api_unhealthy_targets" {
   alarm_name          = "${local.name}-api-unhealthy-targets"
   comparison_operator = "GreaterThanThreshold"
@@ -105,7 +100,6 @@ resource "aws_cloudwatch_metric_alarm" "api_unhealthy_targets" {
 # RDS Database Alarms
 # -----------------------------------------------------------------------------
 
-# High CPU
 resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
   alarm_name          = "${local.name}-rds-cpu-high"
   comparison_operator = "GreaterThanThreshold"
@@ -123,7 +117,6 @@ resource "aws_cloudwatch_metric_alarm" "rds_cpu_high" {
   }
 }
 
-# Low Free Storage
 resource "aws_cloudwatch_metric_alarm" "rds_storage_low" {
   alarm_name          = "${local.name}-rds-storage-low"
   comparison_operator = "LessThanThreshold"

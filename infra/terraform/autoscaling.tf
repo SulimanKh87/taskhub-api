@@ -3,20 +3,15 @@
 # ECS Autoscaling for API Service
 # =============================================================================
 
-# -----------------------------------------------------------------------------
-# Autoscaling Target
-# -----------------------------------------------------------------------------
 resource "aws_appautoscaling_target" "api" {
-  max_capacity       = var.autoscaling_max_capacity
-  min_capacity       = var.autoscaling_min_capacity
-  resource_id        = "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.api.name}"
+  max_capacity = var.autoscaling_max_capacity
+  min_capacity = var.autoscaling_min_capacity
+  # Fixed: was aws_ecs_cluster.this — correct name is aws_ecs_cluster.main
+  resource_id        = "service/${aws_ecs_cluster.main.name}/${aws_ecs_service.api.name}"
   scalable_dimension = "ecs:service:DesiredCount"
   service_namespace  = "ecs"
 }
 
-# -----------------------------------------------------------------------------
-# CPU-Based Autoscaling Policy
-# -----------------------------------------------------------------------------
 resource "aws_appautoscaling_policy" "api_cpu" {
   name               = "${local.name}-api-cpu-autoscaling"
   policy_type        = "TargetTrackingScaling"
@@ -35,9 +30,6 @@ resource "aws_appautoscaling_policy" "api_cpu" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Memory-Based Autoscaling Policy
-# -----------------------------------------------------------------------------
 resource "aws_appautoscaling_policy" "api_memory" {
   name               = "${local.name}-api-memory-autoscaling"
   policy_type        = "TargetTrackingScaling"
@@ -56,9 +48,6 @@ resource "aws_appautoscaling_policy" "api_memory" {
   }
 }
 
-# -----------------------------------------------------------------------------
-# Request Count Based Scaling (ALB)
-# -----------------------------------------------------------------------------
 resource "aws_appautoscaling_policy" "api_requests" {
   name               = "${local.name}-api-requests-autoscaling"
   policy_type        = "TargetTrackingScaling"
@@ -67,7 +56,7 @@ resource "aws_appautoscaling_policy" "api_requests" {
   service_namespace  = aws_appautoscaling_target.api.service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = 1000.0 # 1000 requests per target per minute
+    target_value       = 1000.0
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
 
