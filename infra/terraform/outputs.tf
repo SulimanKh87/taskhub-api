@@ -1,4 +1,5 @@
-# # infra/terraform/output.tf
+# infra/terraform/outputs.tf
+
 output "alb_dns_name" {
   value       = aws_lb.this.dns_name
   description = "Public ALB DNS (if applied)"
@@ -15,7 +16,8 @@ output "ecr_worker_repo_url" {
 }
 
 output "ecs_cluster_name" {
-  value       = aws_ecs_cluster.this.name
+  # ecs.tf uses aws_ecs_cluster.main (not .this)
+  value       = aws_ecs_cluster.main.name
   description = "ECS cluster name"
 }
 
@@ -39,7 +41,6 @@ output "redis_endpoint" {
   description = "ElastiCache Redis endpoint (hostname)"
 }
 
-# Network outputs for migration script
 output "public_subnet_a_id" {
   value       = aws_subnet.public_a.id
   description = "Public subnet A ID"

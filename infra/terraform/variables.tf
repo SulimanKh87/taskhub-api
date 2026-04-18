@@ -1,4 +1,3 @@
-# infra/terraform/variables.tf
 # =============================================================================
 # variables.tf — Input Variables
 # =============================================================================
@@ -24,21 +23,69 @@ variable "environment" {
 }
 
 # -----------------------------------------------------------------------------
-# Secrets (sensitive — never put real values in this file)
-# Supply via terraform.tfvars or environment variables:
-#   export TF_VAR_db_password="..."
-#   export TF_VAR_jwt_secret="..."
+# Legacy aliases used in main.tf locals
+# main.tf uses: local.name = "${var.project}-${var.env}"
 # -----------------------------------------------------------------------------
+variable "project" {
+  description = "Project name prefix for all resources"
+  type        = string
+  default     = "taskhub"
+}
+
+variable "env" {
+  description = "Short environment name used in resource naming (alias for environment)"
+  type        = string
+  default     = "dev"
+}
+
+# -----------------------------------------------------------------------------
+# Database
+# -----------------------------------------------------------------------------
+variable "db_name" {
+  description = "PostgreSQL database name"
+  type        = string
+  default     = "taskhub"
+}
+
+variable "db_username" {
+  description = "PostgreSQL master username"
+  type        = string
+  default     = "taskhub"
+}
+
 variable "db_password" {
   description = "RDS PostgreSQL password — stored in Secrets Manager"
   type        = string
   sensitive   = true
+  default     = "changeme"
 }
 
+variable "rds_instance_class" {
+  description = "RDS instance type"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "rds_allocated_storage" {
+  description = "RDS storage in GB"
+  type        = number
+  default     = 20
+}
+
+variable "redis_node_type" {
+  description = "ElastiCache node type"
+  type        = string
+  default     = "cache.t4g.micro"
+}
+
+# -----------------------------------------------------------------------------
+# Secrets
+# -----------------------------------------------------------------------------
 variable "jwt_secret" {
   description = "JWT signing secret — stored in Secrets Manager"
   type        = string
   sensitive   = true
+  default     = "changeme"
 }
 
 # -----------------------------------------------------------------------------
@@ -50,37 +97,16 @@ variable "alert_email" {
   default     = "alerts@example.com"
 }
 
-# -----------------------------------------------------------------------------
-# Networking (populated from main.tf outputs or remote state)
-# -----------------------------------------------------------------------------
-variable "private_subnet_ids" {
-  description = "List of private subnet IDs for ECS tasks"
-  type        = list(string)
-}
-
-variable "api_security_group_id" {
-  description = "Security group ID for API ECS tasks"
-  type        = string
-}
-
-variable "target_group_arn" {
-  description = "ALB target group ARN for the API service"
-  type        = string
-}
-
 variable "alb_arn_suffix" {
   description = "ALB ARN suffix for CloudWatch metrics"
   type        = string
+  default     = ""
 }
 
 variable "target_group_arn_suffix" {
   description = "Target group ARN suffix for CloudWatch metrics"
   type        = string
-}
-
-variable "redis_endpoint" {
-  description = "ElastiCache Redis primary endpoint"
-  type        = string
+  default     = ""
 }
 
 # -----------------------------------------------------------------------------

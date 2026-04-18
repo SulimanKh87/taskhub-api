@@ -1,4 +1,3 @@
-# infra/terraform/ecs.tf
 # =============================================================================
 # ecs.tf — ECS Cluster, Task Definitions, Services
 #
@@ -64,13 +63,6 @@ resource "aws_cloudwatch_log_group" "migration" {
 
 # -----------------------------------------------------------------------------
 # API Task Definition
-#
-# SECRETS BLOCK (not environment):
-#   name      = env var name the app reads (e.g. JWT_SECRET)
-#   valueFrom = Secrets Manager ARN — ECS fetches value at container startup
-#
-# The task execution role (iam.tf) must have:
-#   secretsmanager:GetSecretValue on these ARNs
 # -----------------------------------------------------------------------------
 resource "aws_ecs_task_definition" "api" {
   family                   = "taskhub-${var.environment}-api"
@@ -78,8 +70,9 @@ resource "aws_ecs_task_definition" "api" {
   network_mode             = "awsvpc"
   cpu                      = var.api_cpu
   memory                   = var.api_memory
-  execution_role_arn       = aws_iam_role.ecs_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  # iam.tf uses task_exec and task_role — reference those exact names
+  execution_role_arn = aws_iam_role.task_exec.arn
+  task_role_arn      = aws_iam_role.task_role.arn
 
   container_definitions = jsonencode([
     {
@@ -94,9 +87,6 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
 
-      # -----------------------------------------------------------------------
-      # Non-sensitive config — safe as plaintext environment variables
-      # -----------------------------------------------------------------------
       environment = [
         { name = "ENV", value = var.environment },
         { name = "APP_ENV", value = var.environment },
@@ -112,13 +102,8 @@ resource "aws_ecs_task_definition" "api" {
         { name = "DB_MAX_OVERFLOW", value = "5" },
         { name = "DB_POOL_TIMEOUT", value = "30" },
         { name = "DB_POOL_RECYCLE_SECONDS", value = "1800" },
-        { name = "REDIS_BROKER", value = "redis://${var.redis_endpoint}:6379/0" },
       ]
 
-      # -----------------------------------------------------------------------
-      # Sensitive values — fetched from Secrets Manager at runtime
-      # valueFrom = ARN of the secret (never the secret value itself)
-      # -----------------------------------------------------------------------
       secrets = [
         {
           name      = "DATABASE_URL"
@@ -130,7 +115,6 @@ resource "aws_ecs_task_definition" "api" {
         }
       ]
 
-      # Health check matches the Dockerfile HEALTHCHECK instruction
       healthCheck = {
         command     = ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
         interval    = 30
@@ -155,7 +139,6 @@ resource "aws_ecs_task_definition" "api" {
 
 # -----------------------------------------------------------------------------
 # Worker Task Definition
-# Same image as API — different CMD (controlled by ECS, not Dockerfile)
 # -----------------------------------------------------------------------------
 resource "aws_ecs_task_definition" "worker" {
   family                   = "taskhub-${var.environment}-worker"
@@ -163,13 +146,13 @@ resource "aws_ecs_task_definition" "worker" {
   network_mode             = "awsvpc"
   cpu                      = var.worker_cpu
   memory                   = var.worker_memory
-  execution_role_arn       = aws_iam_role.ecs_execution.arn
-  task_role_arn            = aws_iam_role.ecs_task.arn
+  execution_role_arn       = aws_iam_role.task_exec.arn
+  task_role_arn            = aws_iam_role.task_role.arn
 
   container_definitions = jsonencode([
     {
       name      = "worker"
-      image     = var.api_image # same image — ECS overrides the command
+      image     = var.api_image
       essential = true
 
       command = [
@@ -181,7 +164,6 @@ resource "aws_ecs_task_definition" "worker" {
         { name = "ENV", value = var.environment },
         { name = "APP_ENV", value = var.environment },
         { name = "AWS_REGION", value = var.aws_region },
-        { name = "REDIS_BROKER", value = "redis://${var.redis_endpoint}:6379/0" },
       ]
 
       secrets = [
@@ -225,61 +207,15 @@ resource "aws_ecs_service" "api" {
   }
 
   network_configuration {
-    subnets          = var.private_subnet_ids
-    security_groups  = [var.api_security_group_id]
-    assign_public_ip = false
+    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups  = [aws_security_group.api.id]
+    assign_public_ip = true
   }
 
   load_balancer {
-    target_group_arn = var.target_group_arn
+    target_group_arn = aws_lb_target_group.api.arn
     container_name   = "api"
     container_port   = 8000
-  }
-
-  # Allow Terraform to update without destroying the service
-  # when task definition changes (new image, config update)
-  force_new_deployment = true
-
-  deployment_circuit_breaker {
-    enable   = true
-    rollback = true # auto-rollback on failed deployment
-  }
-
-  deployment_controller {
-    type = "ECS"
-  }
-
-  depends_on = [aws_iam_role.ecs_execution]
-
-  tags = { Name = "taskhub-${var.environment}-api" }
-
-  lifecycle {
-    ignore_changes = [desired_count] # managed by autoscaling
-  }
-}
-
-# -----------------------------------------------------------------------------
-# Worker ECS Service
-# Uses FARGATE_SPOT to reduce cost by ~70%
-# Workers are retryable so spot interruption is safe
-# -----------------------------------------------------------------------------
-resource "aws_ecs_service" "worker" {
-  name            = "taskhub-${var.environment}-worker"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.worker.arn
-  desired_count   = var.worker_desired_count
-
-  # FARGATE_SPOT: same as Fargate but uses spare AWS capacity
-  # Up to 70% cheaper — suitable for interruptible workloads (Celery workers)
-  capacity_provider_strategy {
-    capacity_provider = "FARGATE_SPOT"
-    weight            = 1
-  }
-
-  network_configuration {
-    subnets          = var.private_subnet_ids
-    security_groups  = [var.api_security_group_id]
-    assign_public_ip = false
   }
 
   force_new_deployment = true
@@ -289,7 +225,43 @@ resource "aws_ecs_service" "worker" {
     rollback = true
   }
 
-  depends_on = [aws_iam_role.ecs_execution]
+  depends_on = [aws_iam_role.task_exec]
+
+  tags = { Name = "taskhub-${var.environment}-api" }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+}
+
+# -----------------------------------------------------------------------------
+# Worker ECS Service — FARGATE_SPOT for cost savings
+# -----------------------------------------------------------------------------
+resource "aws_ecs_service" "worker" {
+  name            = "taskhub-${var.environment}-worker"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.worker.arn
+  desired_count   = var.worker_desired_count
+
+  capacity_provider_strategy {
+    capacity_provider = "FARGATE_SPOT"
+    weight            = 1
+  }
+
+  network_configuration {
+    subnets          = [aws_subnet.public_a.id, aws_subnet.public_b.id]
+    security_groups  = [aws_security_group.worker.id]
+    assign_public_ip = true
+  }
+
+  force_new_deployment = true
+
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+
+  depends_on = [aws_iam_role.task_exec]
 
   tags = { Name = "taskhub-${var.environment}-worker" }
 }
