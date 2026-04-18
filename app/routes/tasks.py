@@ -10,9 +10,6 @@ All routes are JWT-protected.
 
 import uuid
 from datetime import datetime
-import json
-import os
-import boto3
 from app.events import publish_task_created
 
 from fastapi import (

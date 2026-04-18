@@ -15,11 +15,11 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT))
 
-from app.config import get_settings
-from app.models.base import Base
+from app.config import get_settings  # noqa: E402
+from app.models.base import Base  # noqa: E402
 
 # IMPORTANT: import models so Base.metadata is fully populated for autogenerate
-from app.models import user, task, job_log  # noqa: F401
+from app.models import user, task, job_log  # noqa: F401, E402
 
 
 # Alembic Config object, provides access to values within alembic.ini

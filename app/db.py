@@ -23,7 +23,6 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.pool import NullPool
 
 from app.config import settings
-from app.models.base import Base
 
 
 def _normalize_async_db_url(url: str) -> str:
@@ -36,8 +35,6 @@ def _normalize_async_db_url(url: str) -> str:
 
 def _create_engine() -> AsyncEngine:
     is_test = settings.env.lower() == "test"
-
-    poolclass = NullPool if is_test else None
 
     url = _normalize_async_db_url(settings.database_url)
 
@@ -79,6 +76,6 @@ async def get_db() -> AsyncIterator[AsyncSession]:
 # ------------------------------------------------------------
 # Import ORM models so Alembic can discover them
 # ------------------------------------------------------------
-from app.models.user import User
-from app.models.task import Task
-from app.models.job_log import JobLog
+from app.models.user import User  # noqa: E402, F401
+from app.models.task import Task  # noqa: E402, F401
+from app.models.job_log import JobLog  # noqa: E402, F401
