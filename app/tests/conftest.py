@@ -37,12 +37,11 @@ async def create_schema():
 
 @pytest_asyncio.fixture(autouse=True)
 async def clean_db():
-    """Truncate all tables before each test."""
+    """Truncate all tables before each test — uses IF EXISTS to handle first run."""
     engine = get_test_engine()
     async with engine.begin() as conn:
-        await conn.execute(
-            text("TRUNCATE TABLE job_log, tasks, users RESTART IDENTITY CASCADE;")
-        )
+        # IF EXISTS prevents failure when tables don't exist yet on first run
+        await conn.execute(text("TRUNCATE TABLE IF EXISTS job_log, tasks, users RESTART IDENTITY CASCADE;"))
     await engine.dispose()
     yield
 
