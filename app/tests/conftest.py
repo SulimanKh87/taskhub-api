@@ -46,6 +46,7 @@ async def clean_db(create_schema):  # depends on create_schema — runs after it
     await engine.dispose()
     yield
 
+
 @pytest.fixture(autouse=True)
 def disable_celery_tasks(monkeypatch):
     def _noop_send_task(*args, **kwargs):
