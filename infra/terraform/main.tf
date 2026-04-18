@@ -97,22 +97,12 @@ resource "aws_route_table_association" "private_b" {
 }
 
 
-# -------------------------
-# CloudWatch logs
-# -------------------------
-resource "aws_cloudwatch_log_group" "api" {
-  name              = "/ecs/${local.name}-api"
-  retention_in_days = var.log_retention_days
-}
 
-resource "aws_cloudwatch_log_group" "worker" {
-  name              = "/ecs/${local.name}-worker"
-  retention_in_days = var.log_retention_days
-}
+
 
 # -------------------------
-# Security groups (mid-backend best practice)
-# -------------------------
+# Securitywwd groups (mid-backend best practice)
+# -------adfd------------------
 resource "aws_security_group" "alb" {
   name   = "${local.name}-alb-sg"
   vpc_id = aws_vpc.this.id
