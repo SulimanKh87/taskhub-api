@@ -41,7 +41,11 @@ async def clean_db():
     engine = get_test_engine()
     async with engine.begin() as conn:
         # IF EXISTS prevents failure when tables don't exist yet on first run
-        await conn.execute(text("TRUNCATE TABLE IF EXISTS job_log, tasks, users RESTART IDENTITY CASCADE;"))
+        await conn.execute(
+            text(
+                "TRUNCATE TABLE IF EXISTS job_log, tasks, users RESTART IDENTITY CASCADE;"
+            )
+        )
     await engine.dispose()
     yield
 
