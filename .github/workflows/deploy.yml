@@ -1,3 +1,4 @@
+# .github/workflows/deploy.yml
 # =============================================================================
 # deploy.yml — Build → Scan → Push → Deploy → Rollback on failure
 #
