@@ -67,7 +67,7 @@ resource "aws_appautoscaling_policy" "api_requests" {
   service_namespace  = aws_appautoscaling_target.api.service_namespace
 
   target_tracking_scaling_policy_configuration {
-    target_value       = 1000.0  # 1000 requests per target per minute
+    target_value       = 1000.0 # 1000 requests per target per minute
     scale_in_cooldown  = 300
     scale_out_cooldown = 60
 

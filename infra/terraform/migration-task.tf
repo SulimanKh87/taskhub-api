@@ -28,8 +28,8 @@ resource "aws_ecs_task_definition" "migration" {
     command = ["alembic", "upgrade", "head"]
 
     environment = [
-      { name = "ENV",          value = "prod" },
-      { name = "JWT_SECRET",   value = var.jwt_secret },
+      { name = "ENV", value = "prod" },
+      { name = "JWT_SECRET", value = var.jwt_secret },
       { name = "DATABASE_URL", value = local.database_url },
       { name = "REDIS_BROKER", value = local.redis_broker }
     ]

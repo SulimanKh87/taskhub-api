@@ -59,7 +59,7 @@ resource "aws_iam_role_policy" "task_role_policy" {
           "ssmmessages:OpenDataChannel"
         ]
         Resource = "*"
-      },  # ← Fixed: comma INSIDE array
+      }, # ← Fixed: comma INSIDE array
       {
         # EventBridge
         Effect = "Allow"

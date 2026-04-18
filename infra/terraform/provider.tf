@@ -40,10 +40,10 @@ terraform {
   # chicken-and-egg problem. Bootstrap manually, manage everything else with TF.
   # -------------------------------------------------------------------------
   backend "s3" {
-    bucket         = "taskhub-terraform-state"   # replace with your bucket name
-    key            = "taskhub/dev/terraform.tfstate"
-    region         = "eu-central-1"
-    encrypt        = true                         # SSE-S3 encryption at rest
+    bucket  = "taskhub-terraform-state" # replace with your bucket name
+    key     = "taskhub/dev/terraform.tfstate"
+    region  = "eu-central-1"
+    encrypt = true # SSE-S3 encryption at rest
 
     # DynamoDB table for state locking
     # Prevents concurrent applies from corrupting state

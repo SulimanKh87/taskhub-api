@@ -132,7 +132,7 @@ resource "aws_cloudwatch_metric_alarm" "rds_storage_low" {
   namespace           = "AWS/RDS"
   period              = 300
   statistic           = "Average"
-  threshold           = 2000000000  # 2GB in bytes
+  threshold           = 2000000000 # 2GB in bytes
   alarm_description   = "RDS free storage is below 2GB"
   alarm_actions       = [aws_sns_topic.alarms.arn]
 

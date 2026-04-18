@@ -97,21 +97,21 @@ resource "aws_ecs_task_definition" "api" {
       # Non-sensitive config — safe as plaintext environment variables
       # -----------------------------------------------------------------------
       environment = [
-        { name = "ENV",              value = var.environment },
-        { name = "APP_ENV",          value = var.environment },
-        { name = "APP_NAME",         value = "taskhub-api" },
-        { name = "APP_DEBUG",        value = "false" },
-        { name = "PORT",             value = "8000" },
-        { name = "AWS_REGION",       value = var.aws_region },
-        { name = "EVENT_BUS_NAME",   value = var.event_bus_name },
-        { name = "JWT_ALGORITHM",    value = "HS256" },
+        { name = "ENV", value = var.environment },
+        { name = "APP_ENV", value = var.environment },
+        { name = "APP_NAME", value = "taskhub-api" },
+        { name = "APP_DEBUG", value = "false" },
+        { name = "PORT", value = "8000" },
+        { name = "AWS_REGION", value = var.aws_region },
+        { name = "EVENT_BUS_NAME", value = var.event_bus_name },
+        { name = "JWT_ALGORITHM", value = "HS256" },
         { name = "JWT_EXPIRE_MINUTES", value = "15" },
         { name = "JWT_REFRESH_DAYS", value = "7" },
-        { name = "DB_POOL_SIZE",     value = "5" },
-        { name = "DB_MAX_OVERFLOW",  value = "5" },
-        { name = "DB_POOL_TIMEOUT",  value = "30" },
+        { name = "DB_POOL_SIZE", value = "5" },
+        { name = "DB_MAX_OVERFLOW", value = "5" },
+        { name = "DB_POOL_TIMEOUT", value = "30" },
         { name = "DB_POOL_RECYCLE_SECONDS", value = "1800" },
-        { name = "REDIS_BROKER",     value = "redis://${var.redis_endpoint}:6379/0" },
+        { name = "REDIS_BROKER", value = "redis://${var.redis_endpoint}:6379/0" },
       ]
 
       # -----------------------------------------------------------------------
@@ -168,7 +168,7 @@ resource "aws_ecs_task_definition" "worker" {
   container_definitions = jsonencode([
     {
       name      = "worker"
-      image     = var.api_image   # same image — ECS overrides the command
+      image     = var.api_image # same image — ECS overrides the command
       essential = true
 
       command = [
@@ -177,9 +177,9 @@ resource "aws_ecs_task_definition" "worker" {
       ]
 
       environment = [
-        { name = "ENV",          value = var.environment },
-        { name = "APP_ENV",      value = var.environment },
-        { name = "AWS_REGION",   value = var.aws_region },
+        { name = "ENV", value = var.environment },
+        { name = "APP_ENV", value = var.environment },
+        { name = "AWS_REGION", value = var.aws_region },
         { name = "REDIS_BROKER", value = "redis://${var.redis_endpoint}:6379/0" },
       ]
 
@@ -241,7 +241,7 @@ resource "aws_ecs_service" "api" {
 
   deployment_circuit_breaker {
     enable   = true
-    rollback = true   # auto-rollback on failed deployment
+    rollback = true # auto-rollback on failed deployment
   }
 
   deployment_controller {
@@ -253,7 +253,7 @@ resource "aws_ecs_service" "api" {
   tags = { Name = "taskhub-${var.environment}-api" }
 
   lifecycle {
-    ignore_changes = [desired_count]  # managed by autoscaling
+    ignore_changes = [desired_count] # managed by autoscaling
   }
 }
 

@@ -270,12 +270,12 @@ resource "aws_lb_target_group" "api" {
 
 
   health_check {
-  path                = "/health"
-  matcher             = "200"
-  interval            = 30
-  timeout             = 5
-  healthy_threshold   = 2
-  unhealthy_threshold = 3
+    path                = "/health"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 3
   }
 }
 
