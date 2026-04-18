@@ -31,7 +31,7 @@ RUN apt-get update \
         ca-certificates \
         libpq5 \
     && apt-get upgrade -y \
-    && rm -rf /var/lib/apt/lists/* \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python packages into /install prefix — copied to runtime stage only
 COPY requirements.txt .
