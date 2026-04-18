@@ -27,9 +27,11 @@ WORKDIR /build
 # Build-time OS deps needed to compile some Python packages (asyncpg, psycopg)
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-        gcc \
-        libpq-dev \
-    && rm -rf /var/lib/apt/lists/*
+        curl \
+        ca-certificates \
+        libpq5 \
+    && apt-get upgrade -y \
+    && rm -rf /var/lib/apt/lists/* \
 
 # Install Python packages into /install prefix — copied to runtime stage only
 COPY requirements.txt .
