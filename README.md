@@ -1,7 +1,7 @@
 # TaskHub API — Production-Grade Backend + DevOps
 
-![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg)
-![Deploy](https://github.com/sulimankh87/taskhub-api/actions/workflows/deploy.yml/badge.svg)
+![CI](https://github.com/sulimankh87/taskhub-api/actions/workflows/ci.yml/badge.svg?branch=devops-sql-aws)
+![Deploy](https://img.shields.io/badge/deploy-pending%20AWS%20setup-yellow)
 ![Python](https://img.shields.io/badge/python-3.12-blue.svg)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.120-green)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-blue)
