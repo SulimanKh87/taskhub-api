@@ -36,19 +36,15 @@ async def create_schema():
 
 
 @pytest_asyncio.fixture(autouse=True)
-async def clean_db():
-    """Truncate all tables before each test — uses IF EXISTS to handle first run."""
+async def clean_db(create_schema):  # depends on create_schema — runs after it
+    """Truncate all tables before each test. Depends on create_schema to ensure tables exist."""
     engine = get_test_engine()
     async with engine.begin() as conn:
-        # IF EXISTS prevents failure when tables don't exist yet on first run
         await conn.execute(
-            text(
-                "TRUNCATE TABLE IF EXISTS job_log, tasks, users RESTART IDENTITY CASCADE;"
-            )
+            text("TRUNCATE TABLE job_log, tasks, users RESTART IDENTITY CASCADE;")
         )
     await engine.dispose()
     yield
-
 
 @pytest.fixture(autouse=True)
 def disable_celery_tasks(monkeypatch):
