@@ -50,6 +50,7 @@ async def clean_db():
 def disable_celery_tasks(monkeypatch):
     def _noop_send_task(*args, **kwargs):
         return None
+
     monkeypatch.setattr(
         "app.routes.auth.celery_app.send_task",
         _noop_send_task,

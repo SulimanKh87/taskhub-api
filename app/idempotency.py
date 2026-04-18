@@ -2,7 +2,9 @@ from datetime import datetime
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.dialects.postgresql import insert  # IMPORTANT: PG insert for on_conflict
+from sqlalchemy.dialects.postgresql import (
+    insert,
+)  # IMPORTANT: PG insert for on_conflict
 
 from app.models.job_log import JobLog
 
@@ -10,6 +12,7 @@ from app.models.job_log import JobLog
 # ============================================================
 # Idempotent Job Helpers (PostgreSQL)
 # ============================================================
+
 
 async def get_job_result(session: AsyncSession, job_id: str):
     """

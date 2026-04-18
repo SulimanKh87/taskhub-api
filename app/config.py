@@ -63,6 +63,7 @@ class Settings(BaseSettings):
     aws_region: str = Field(default="eu-central-1", alias="AWS_REGION")
     event_bus_name: str = Field(default="default", alias="EVENT_BUS_NAME")
 
+
 @lru_cache
 def get_settings() -> Settings:
     """Cached settings for the process lifetime."""
@@ -70,4 +71,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

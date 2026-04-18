@@ -24,9 +24,7 @@ celery_app = Celery(
 )
 
 # Register Celery task modules
-celery_app.conf.imports = (
-    "app.workers.tasks.email_tasks",
-)
+celery_app.conf.imports = ("app.workers.tasks.email_tasks",)
 
 # Celery runtime configuration
 celery_app.conf.update(

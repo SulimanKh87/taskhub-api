@@ -25,12 +25,14 @@ from sqlalchemy.pool import NullPool
 from app.config import settings
 from app.models.base import Base
 
+
 def _normalize_async_db_url(url: str) -> str:
     # SQLAlchemy async engine requires an async driver (asyncpg)
     # Accept "postgresql://" but convert it to "postgresql+asyncpg://"
     if url.startswith("postgresql://") and "+asyncpg" not in url:
         return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
+
 
 def _create_engine() -> AsyncEngine:
     is_test = settings.env.lower() == "test"

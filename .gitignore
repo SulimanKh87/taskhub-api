@@ -66,3 +66,4 @@ scripts/*.log
 scripts/temp/aws/
 awscliv2.zip
 
+aws/

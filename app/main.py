@@ -46,7 +46,9 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        response.headers["Strict-Transport-Security"] = (
+            "max-age=31536000; includeSubDomains"
+        )
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         return response
 
@@ -85,11 +87,11 @@ app.add_middleware(SecurityHeadersMiddleware)
 # expose() registers the /metrics route automatically
 # ------------------------------------------------------------
 Instrumentator(
-    should_group_status_codes=True,       # group 2xx, 4xx, 5xx
-    should_ignore_untemplated=True,       # skip unmatched routes (reduces cardinality)
-    should_respect_env_var=True,          # disable with ENABLE_METRICS=false
+    should_group_status_codes=True,  # group 2xx, 4xx, 5xx
+    should_ignore_untemplated=True,  # skip unmatched routes (reduces cardinality)
+    should_respect_env_var=True,  # disable with ENABLE_METRICS=false
     env_var_name="ENABLE_METRICS",
-    excluded_handlers=["/metrics"],       # don't track /metrics calls themselves
+    excluded_handlers=["/metrics"],  # don't track /metrics calls themselves
 ).instrument(app).expose(app)
 
 

@@ -14,16 +14,20 @@ def publish_task_created(task_id: str, task_title: str, owner: str) -> None:
         )
 
         client.put_events(
-            Entries=[{
-                "EventBusName": settings.event_bus_name,
-                "Source": "taskhub.api",
-                "DetailType": "TaskCreated",
-                "Detail": json.dumps({
-                    "task_id": task_id,
-                    "task_title": task_title,
-                    "owner": owner,
-                }),
-            }]
+            Entries=[
+                {
+                    "EventBusName": settings.event_bus_name,
+                    "Source": "taskhub.api",
+                    "DetailType": "TaskCreated",
+                    "Detail": json.dumps(
+                        {
+                            "task_id": task_id,
+                            "task_title": task_title,
+                            "owner": owner,
+                        }
+                    ),
+                }
+            ]
         )
     except Exception as e:
         print(f"Failed to publish TaskCreated event: {e}")
