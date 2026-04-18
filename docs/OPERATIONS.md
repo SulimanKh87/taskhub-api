@@ -1,3 +1,4 @@
+# docs/OPERATIONS.md
 # 🛠 Operations Guide — TaskHub API
 
 Day-to-day commands for debugging, monitoring, and operating TaskHub in production.

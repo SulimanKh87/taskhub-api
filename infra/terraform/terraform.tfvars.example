@@ -1,3 +1,4 @@
+# infra/terraform/terraform.tfvars.example
 # =============================================================================
 # terraform.tfvars.example — Example variable values
 #

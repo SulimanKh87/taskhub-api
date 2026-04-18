@@ -1,3 +1,4 @@
+# k8s/deployment-worker.yaml
 # =============================================================================
 # deployment-worker.yaml — Celery Worker Deployment
 #

@@ -1,5 +1,6 @@
+# k8s/configmap.yaml
 # =============================================================================
-# configmap.yaml — Non-sensitive environment variables
+# k8s/configmap.yaml — Non-sensitive environment variables
 #
 # WHY CONFIGMAP NOT SECRET?
 #   ConfigMap = non-sensitive config (app name, log level, feature flags)

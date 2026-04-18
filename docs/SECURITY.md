@@ -1,3 +1,4 @@
+# docs/SECURITY.md
 # 🔐 Security Overview
 
 This document summarizes the **application-level security model** of TaskHub API.

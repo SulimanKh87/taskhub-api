@@ -1,3 +1,4 @@
+# docs/COST.md
 # 💰 Cost & Scaling — TaskHub AWS Infrastructure
 
 This document breaks down what TaskHub costs to run, why each resource

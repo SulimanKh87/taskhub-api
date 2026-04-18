@@ -1,3 +1,4 @@
+# monitoring/grafana/provisioning/datasources
 apiVersion: 1
 
 datasources:

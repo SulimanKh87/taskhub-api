@@ -1,3 +1,4 @@
+# docs/INCIDENTS.md
 # 🚨 Incident Response — TaskHub API
 
 This document describes real failure scenarios for TaskHub API:

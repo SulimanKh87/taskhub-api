@@ -1,4 +1,4 @@
-# main.tf
+# infra/terraform/main.tf
 locals {
   name = "${var.project}-${var.env}"
 

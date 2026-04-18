@@ -1,3 +1,4 @@
+# docs/ARCHITECTURE.md
 # 🧱 TaskHub API — System Architecture
 
 This document describes the **current architecture** of TaskHub API as it exists today.

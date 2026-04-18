@@ -1,3 +1,4 @@
+# infra/terraform/secrets.tf
 # =============================================================================
 # secrets.tf — AWS Secrets Manager
 #

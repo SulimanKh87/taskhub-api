@@ -1,3 +1,4 @@
+# docs/ECR.md
 # 🐳 ECR Integration Guide
 
 This document explains how to build, tag, and push Docker images to AWS Elastic Container Registry (ECR).

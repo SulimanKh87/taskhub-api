@@ -1,3 +1,4 @@
+# infra/terraform/provider.tf
 # =============================================================================
 # provider.tf — AWS Provider + Remote State Backend
 #

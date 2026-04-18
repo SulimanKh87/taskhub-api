@@ -1,3 +1,4 @@
+# docs/FAILURE_MODES.md
 # 💥 Failure Modes — How TaskHub Breaks (and Recovers)
 
 This document explains **how the system can fail**, **what the impact is**, and **how failures are detected and mitigated**.

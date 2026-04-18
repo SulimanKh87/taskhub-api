@@ -1,3 +1,4 @@
+# app/events.py
 import json
 import boto3
 from app.config import settings
