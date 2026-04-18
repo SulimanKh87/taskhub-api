@@ -17,7 +17,7 @@
 # STAGE 1: builder
 # Install all Python dependencies into a clean prefix we can copy later.
 # =============================================================================
-FROM python:3.12.3-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -43,7 +43,7 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # Lean image — copies only installed packages + application code.
 # Build tools, pip cache, gcc never make it here.
 # =============================================================================
-FROM python:3.12.3-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
